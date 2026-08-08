@@ -213,6 +213,59 @@ services:
       timeout: 10s
       retries: 5
 
+  mumble:
+    image: lscr.io/linuxserver/murmur:latest
+    container_name: mumble
+    networks:
+      - backend
+    ports:
+      - "64738:64738"
+      - "64738:64738/udp"
+    volumes:
+      - ../data/mumble:/config
+    environment:
+      - TZ=${TZ}
+      - MUMBLE_SUPERUSER_PASSWORD=${MUMBLE_SUPERUSER_PASSWORD:-changeme}
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep murmurd > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  kali:
+    image: lscr.io/linuxserver/webtop:kali-xfce
+    container_name: kali
+    networks:
+      - backend
+    ports:
+      - "127.0.0.1:3002:3000"
+    volumes:
+      - ../data/kali:/config
+    environment:
+      - TZ=${TZ}
+      - CUSTOM_USER=kali
+      - PASSWORD=${KALI_PASSWORD:-kalilinux}
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    shm_size: 1gb
+
 networks:
   backend:
     driver: bridge

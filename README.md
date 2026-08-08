@@ -9,6 +9,8 @@ Infraestrutura do homelab gerenciada via Docker Compose com SOPS para secrets.
 | **Home Assistant** | Automacao residencial | `8123` |
 | **MariaDB** | Banco de dados (recorder do HA) | interno |
 | **ESPHome** | Firmware para dispositivos ESP | host |
+| **Mumble** | Servidor VoIP | `64738` TCP+UDP |
+| **Kali Linux** | Desktop Kali via navegador | `3002` (localhost) |
 | **Caddy** | Reverse proxy (TLS automatico) | `80`, `443` |
 | **Forgejo** | Git self-hosted | `3001`, `2222` (SSH) |
 | **Prometheus** | Metricas | `9090` (localhost) |
@@ -36,14 +38,12 @@ sudo apt install -y docker.io docker-compose-v2
 sudo usermod -aG docker $USER
 
 # SOPS (secrets encryption)
-# Download manual: https://github.com/getsops/sops/releases
-sudo curl -sLo /usr/local/bin/sops \
-  https://github.com/getsops/sops/releases/download/v3.9.4/sops_3.9.4_amd64.deb
-# ou extraia o binario do .deb: dpkg-deb -x sops*.deb /tmp/s && sudo install -m 755 /tmp/s/usr/bin/sops /usr/local/bin/
+curl -LO https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.linux.amd64
+sudo mv sops-v3.13.3.linux.amd64 /usr/local/bin/sops
+sudo chmod +x /usr/local/bin/sops
 
 # age (SOPS backend)
 sudo apt install -y age
-# ou manual: https://github.com/FiloSottile/age/releases
 
 # yamllint (CI opcional)
 sudo apt install -y yamllint
@@ -99,12 +99,27 @@ bash scripts/decrypt-secrets.sh   # gerar .env
 
 O recorder do Home Assistant usa MariaDB para persistencia mais rapida e confiavel que o SQLite padrao. O container do HA espera o healthcheck do MariaDB antes de iniciar.
 
+### Mumble (Murmur)
+
+Servidor VoIP open-source. Conecte com qualquer client Mumble em `<IP>:64738`.
+
 ```yaml
 # compose/sops-secrets.yaml
-MARIADB_ROOT_PASSWORD: "..."
-MARIADB_USER: "ha_user"
-MARIADB_PASSWORD: "..."
+MUMBLE_SUPERUSER_PASSWORD: "sua-senha-aqui"
 ```
+
+Apos subir, logue como `SuperUser` com a senha definida para administrar o servidor.
+
+### Kali Linux (Webtop)
+
+Desktop Kali Linux acessivel pelo navegador em `/kali`. Ideal para pentesting e laboratorio de seguranca.
+
+```yaml
+# compose/sops-secrets.yaml
+KALI_PASSWORD: "sua-senha-aqui"
+```
+
+Usuario padrao: `kali`. Acesso: `https://<DOMAIN>/kali/`.
 
 ### Reverse Proxy (Caddy)
 
@@ -118,10 +133,11 @@ Rotas:
 - `/` -> Home Assistant
 - `/grafana/*` -> Grafana
 - `/git/*` -> Forgejo
+- `/kali/*` -> Kali Linux
 
 ### Seguranca
 
-- Servicos internos (Prometheus, Grafana) bindam apenas em `127.0.0.1`
+- Servicos internos (Prometheus, Grafana, Kali) bindam apenas em `127.0.0.1`
 - MariaDB acessivel apenas na rede interna `backend`
 - Secrets encriptados com SOPS + age (nunca commitados em plaintext)
 - `.env` no `.gitignore` (gerado via `decrypt-secrets.sh`)
@@ -141,4 +157,4 @@ cp ~/.config/sops/age/keys.txt backup-age-key.txt
 
 ## CI/CD
 
-GitHub Actions valida sintaxe YAML e configuracoes do Compose em todo push e PR.
+GitHub Actions valida sintaxe YAML, compose, e faz scan de vulnerabilidades com Trivy em todo push e PR.
