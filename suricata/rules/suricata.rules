@@ -7,7 +7,7 @@
 
 # ICMP ping (single)
 alert icmp any any -> $HOME_NET any (msg:"ICMP echo request (ping)"; \
-  itype:8; sid:1000001; rev:2;)
+  itype:8; sid:1000001; rev:3;)
 
 # ICMP sweep (10+ hosts in 30s)
 alert icmp any any -> $HOME_NET any (msg:"ICMP ping sweep detected"; \
@@ -15,76 +15,76 @@ alert icmp any any -> $HOME_NET any (msg:"ICMP ping sweep detected"; \
   sid:1000003; rev:1;)
 
 # ============================================================
-# TCP Scan Detection
+# TCP Scan Detection (any source, low threshold)
 # ============================================================
 
-# SYN scan (nmap -sS): TCP SYN to many ports without completing handshake
-alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"TCP SYN scan detected"; \
+# SYN scan (nmap -sS): 5+ SYNs in 3s
+alert tcp any any -> $HOME_NET any (msg:"TCP SYN scan detected"; \
   flags:S; flow:stateless; \
-  threshold:type both, track by_src, count 15, seconds 5; \
-  sid:1000010; rev:1;)
+  threshold:type both, track by_src, count 5, seconds 3; \
+  sid:1000010; rev:2;)
 
-# Connect scan (nmap -sT): rapid completed TCP connections to many ports
-alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"TCP connect() scan detected"; \
+# Connect scan (nmap -sT): 5+ established in 3s
+alert tcp any any -> $HOME_NET any (msg:"TCP connect() scan detected"; \
   flow:to_server,established; \
-  threshold:type both, track by_src, count 15, seconds 5; \
-  sid:1000011; rev:1;)
+  threshold:type both, track by_src, count 5, seconds 3; \
+  sid:1000011; rev:2;)
 
-# NULL scan (nmap -sN): TCP with no flags set
-alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"TCP NULL scan detected"; \
+# NULL scan (nmap -sN)
+alert tcp any any -> $HOME_NET any (msg:"TCP NULL scan detected"; \
   flags:0; flow:stateless; \
-  threshold:type threshold, track by_src, count 5, seconds 10; \
-  sid:1000012; rev:1;)
+  threshold:type threshold, track by_src, count 3, seconds 10; \
+  sid:1000012; rev:2;)
 
-# FIN scan (nmap -sF): TCP FIN without ACK
-alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"TCP FIN scan detected"; \
+# FIN scan (nmap -sF)
+alert tcp any any -> $HOME_NET any (msg:"TCP FIN scan detected"; \
   flags:F; flow:stateless; \
-  threshold:type threshold, track by_src, count 5, seconds 10; \
-  sid:1000013; rev:1;)
+  threshold:type threshold, track by_src, count 3, seconds 10; \
+  sid:1000013; rev:2;)
 
-# XMAS scan (nmap -sX): FIN+PSH+URG flags
-alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"TCP XMAS scan detected"; \
+# XMAS scan (nmap -sX)
+alert tcp any any -> $HOME_NET any (msg:"TCP XMAS scan detected"; \
   flags:FPU; flow:stateless; \
-  threshold:type threshold, track by_src, count 5, seconds 10; \
-  sid:1000014; rev:1;)
+  threshold:type threshold, track by_src, count 3, seconds 10; \
+  sid:1000014; rev:2;)
 
 # ============================================================
-# Port Scan (general — aggressive probing)
+# Port Scan (general)
 # ============================================================
 
-# High-rate port probing (50+ unique ports in 10s)
-alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"Aggressive port scan detected"; \
-  flow:stateless; \
-  threshold:type both, track by_src, count 50, seconds 10; \
-  sid:1000020; rev:1;)
+# Port scan: 10+ unique ports in 5s
+alert tcp any any -> $HOME_NET any (msg:"Aggressive port scan detected"; \
+  flags:S; flow:stateless; \
+  threshold:type both, track by_src, count 10, seconds 5; \
+  sid:1000020; rev:2;)
 
 # ============================================================
 # UDP Scan
 # ============================================================
 
-# UDP scan: rapid UDP packets to many ports
-alert udp $EXTERNAL_NET any -> $HOME_NET any (msg:"UDP scan detected"; \
-  threshold:type both, track by_src, count 10, seconds 5; \
-  sid:1000030; rev:1;)
+# UDP scan: 5+ packets in 3s
+alert udp any any -> $HOME_NET any (msg:"UDP scan detected"; \
+  threshold:type both, track by_src, count 5, seconds 3; \
+  sid:1000030; rev:2;)
 
 # ============================================================
-# Service-Specific Intrusion Attempts
+# Service-Specific
 # ============================================================
 
 # SSH brute force (5+ connections in 60s)
-alert tcp $EXTERNAL_NET any -> $HOME_NET 22 (msg:"SSH brute force detected"; \
+alert tcp any any -> $HOME_NET 22 (msg:"SSH brute force detected"; \
   flow:to_server,established; \
   threshold:type threshold, track by_src, count 5, seconds 60; \
-  sid:1000040; rev:2;)
+  sid:1000040; rev:3;)
 
-# HTTP directory traversal attempt
-alert tcp $EXTERNAL_NET any -> $HOME_NET [80,443,8080,8123] (msg:"HTTP path traversal attempt"; \
-  flow:to_server,established; content:"../"; http_uri; \
-  sid:1000050; rev:1;)
+# HTTP path traversal
+alert tcp any any -> $HOME_NET $HTTP_PORTS (msg:"HTTP path traversal attempt"; \
+  flow:to_server,established; content:"../"; http_uri; nocase; \
+  sid:1000050; rev:2;)
 
 # HTTP SQL injection probe
-alert tcp $EXTERNAL_NET any -> $HOME_NET [80,443,8080,8123] (msg:"HTTP SQL injection probe"; \
+alert tcp any any -> $HOME_NET $HTTP_PORTS (msg:"HTTP SQL injection probe"; \
   flow:to_server,established; \
-  content:"union"; nocase; http_uri; \
+  content:"union"; nocase; http_uri; fast_pattern; \
   content:"select"; nocase; http_uri; distance:0; \
-  sid:1000051; rev:1;)
+  sid:1000051; rev:2;)

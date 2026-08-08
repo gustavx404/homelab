@@ -3,6 +3,9 @@
 vars:
   address-groups:
     HOME_NET: "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]"
+    EXTERNAL_NET: "!$HOME_NET"
+  port-groups:
+    HTTP_PORTS: "[80,443,8080,8123,3000,3001]"
 
 default-rule-path: /etc/suricata/rules
 rule-files:
@@ -11,6 +14,9 @@ rule-files:
 af-packet:
   - interface: eno1
     cluster-id: 99
+    cluster-type: cluster_flow
+  - interface: br-e6c9e8317e01
+    cluster-id: 98
     cluster-type: cluster_flow
 
 outputs:
