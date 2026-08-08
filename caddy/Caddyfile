@@ -21,11 +21,6 @@
     reverse_proxy forgejo:3000
   }
 
-  # Kali Linux (webtop)
-  handle_path /kali/* {
-    reverse_proxy kali:3000
-  }
-
   # Default response for unmatched paths
   respond 404
 }

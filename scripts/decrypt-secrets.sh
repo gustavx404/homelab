@@ -14,14 +14,10 @@ if ! command -v sops &>/dev/null; then
   exit 1
 fi
 
-if ! command -v age-keygen &>/dev/null; then
-  echo "ERROR: age is not installed. https://github.com/FiloSottile/age"
-  exit 1
-fi
-
 if [ ! -f "$HOME/.config/sops/age/keys.txt" ]; then
   echo "ERROR: age key not found at ~/.config/sops/age/keys.txt"
-  echo "Generate one with: age-keygen -o ~/.config/sops/age/keys.txt"
+  echo "Generate one with: curl -LO https://github.com/FiloSottile/age/releases/download/v1.2.1/age-v1.2.1-linux-amd64.tar.gz"
+  echo "  tar -xzf age-*.tar.gz && ./age/age-keygen -o ~/.config/sops/age/keys.txt"
   exit 1
 fi
 

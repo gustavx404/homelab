@@ -44,9 +44,10 @@ jobs:
       matrix:
         image:
           - ghcr.io/home-assistant/home-assistant:stable
-          - ghcr.io/esphome/esphome:2024.11.0
-          - grafana/grafana:latest
-          - caddy:latest
+          - ghcr.io/esphome/esphome:stable
+          - grafana/grafana:11.6.0
+          - caddy:2-alpine
+          - prom/prometheus:v3.4.0
           - codeberg.org/forgejo/forgejo:16.0.2
     steps:
       - uses: actions/checkout@v4

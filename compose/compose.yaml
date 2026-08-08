@@ -69,7 +69,7 @@ services:
       retries: 3
 
   esphome:
-    image: ghcr.io/esphome/esphome:2024.11.0
+    image: ghcr.io/esphome/esphome:stable
     container_name: esphome
     network_mode: host
     security_opt:
@@ -85,13 +85,13 @@ services:
           memory: 256M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:6052/ || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:6052/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.4.0
     container_name: prometheus
     networks:
       - backend
@@ -116,7 +116,7 @@ services:
       retries: 3
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.6.0
     container_name: grafana
     networks:
       - backend
@@ -129,6 +129,8 @@ services:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_SERVER_ROOT_URL=https://${DOMAIN:-localhost}/grafana
+      - GF_PATHS_PLUGINS=/tmp/grafana-plugins
+    user: "472:472"
     deploy:
       resources:
         limits:
@@ -141,7 +143,7 @@ services:
       retries: 3
 
   suricata:
-    image: jasonish/suricata:latest
+    image: jasonish/suricata:7.0
     container_name: suricata
     network_mode: host
     cap_add:
@@ -151,22 +153,26 @@ services:
     security_opt:
       - no-new-privileges:true
     volumes:
-      - ../suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
-      - ../suricata/rules:/etc/suricata/rules:ro
+      - ../suricata/suricata.yaml:/etc/suricata/suricata.yaml
+      - ../suricata/rules:/etc/suricata/rules
       - ../data/suricata:/var/log/suricata
+    command:
+      - -c
+      - /etc/suricata/suricata.yaml
+      - --af-packet
     deploy:
       resources:
         limits:
           memory: 512M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pgrep suricata > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "pgrep -f suricata > /dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
 
   caddy:
-    image: caddy:latest
+    image: caddy:2-alpine
     container_name: caddy
     networks:
       - backend
@@ -176,15 +182,13 @@ services:
     volumes:
       - ../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ../data/caddy:/data
-    environment:
-      - CADDY_ADMIN=off
     deploy:
       resources:
         limits:
           memory: 128M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/ || exit 1"]
+      test: ["CMD-SHELL", "pgrep caddy > /dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -214,7 +218,7 @@ services:
       retries: 5
 
   mumble:
-    image: lscr.io/linuxserver/murmur:latest
+    image: mumblevoip/mumble-server:latest
     container_name: mumble
     networks:
       - backend
@@ -222,10 +226,9 @@ services:
       - "64738:64738"
       - "64738:64738/udp"
     volumes:
-      - ../data/mumble:/config
+      - ../data/mumble:/data
     environment:
       - TZ=${TZ}
-      - MUMBLE_SUPERUSER_PASSWORD=${MUMBLE_SUPERUSER_PASSWORD:-changeme}
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -234,37 +237,43 @@ services:
           memory: 256M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pgrep murmurd > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "pgrep mumble-server > /dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
 
   kali:
-    image: lscr.io/linuxserver/webtop:kali-xfce
+    image: kalilinux/kali-rolling:latest
     container_name: kali
     networks:
       - backend
-    ports:
-      - "127.0.0.1:3002:3000"
     volumes:
-      - ../data/kali:/config
+      - ../data/kali:/root
+      - /etc/localtime:/etc/localtime:ro
     environment:
       - TZ=${TZ}
-      - CUSTOM_USER=kali
-      - PASSWORD=${KALI_PASSWORD:-kalilinux}
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
     security_opt:
       - no-new-privileges:true
+    command:
+      - /bin/bash
+      - -c
+      - |
+        apt-get update -qq && apt-get install -y -qq --no-install-recommends kali-linux-headless 2>/dev/null || true
+        echo "Kali Linux ready. Use: docker exec -it kali bash"
+        tail -f /dev/null
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 1G
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/ || exit 1"]
+      test: ["CMD-SHELL", "true"]
       interval: 30s
       timeout: 10s
-      retries: 5
-    shm_size: 1gb
+      retries: 3
 
 networks:
   backend:

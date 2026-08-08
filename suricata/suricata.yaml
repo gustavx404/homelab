@@ -1,3 +1,4 @@
+%YAML 1.1
 ---
 vars:
   address-groups:
@@ -8,7 +9,7 @@ rule-files:
   - suricata.rules
 
 af-packet:
-  - interface: eth0
+  - interface: eno1
     cluster-id: 99
     cluster-type: cluster_flow
 

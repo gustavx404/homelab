@@ -10,7 +10,7 @@ Infraestrutura do homelab gerenciada via Docker Compose com SOPS para secrets.
 | **MariaDB** | Banco de dados (recorder do HA) | interno |
 | **ESPHome** | Firmware para dispositivos ESP | host |
 | **Mumble** | Servidor VoIP | `64738` TCP+UDP |
-| **Kali Linux** | Desktop Kali via navegador | `3002` (localhost) |
+| **Kali Linux** | Pentest/CTF (CLI) | interno |
 | **Caddy** | Reverse proxy (TLS automatico) | `80`, `443` |
 | **Forgejo** | Git self-hosted | `3001`, `2222` (SSH) |
 | **Prometheus** | Metricas | `9090` (localhost) |
@@ -110,16 +110,19 @@ MUMBLE_SUPERUSER_PASSWORD: "sua-senha-aqui"
 
 Apos subir, logue como `SuperUser` com a senha definida para administrar o servidor.
 
-### Kali Linux (Webtop)
+### Kali Linux (CLI)
 
-Desktop Kali Linux acessivel pelo navegador em `/kali`. Ideal para pentesting e laboratorio de seguranca.
+Container Kali oficial para pentest e CTF. Ferramentas como nmap, metasploit, hydra, etc. Acesso via `docker exec`:
 
-```yaml
-# compose/sops-secrets.yaml
-KALI_PASSWORD: "sua-senha-aqui"
+```bash
+# Entrar no container
+docker exec -it kali bash
+
+# Instalar ferramentas adicionais
+apt update && apt install -y kali-tools-top10
 ```
 
-Usuario padrao: `kali`. Acesso: `https://<DOMAIN>/kali/`.
+O container ja tem `NET_RAW` e `NET_ADMIN` para scans de rede.
 
 ### Reverse Proxy (Caddy)
 
@@ -133,11 +136,10 @@ Rotas:
 - `/` -> Home Assistant
 - `/grafana/*` -> Grafana
 - `/git/*` -> Forgejo
-- `/kali/*` -> Kali Linux
 
 ### Seguranca
 
-- Servicos internos (Prometheus, Grafana, Kali) bindam apenas em `127.0.0.1`
+- Servicos internos (Prometheus, Grafana) bindam apenas em `127.0.0.1`
 - MariaDB acessivel apenas na rede interna `backend`
 - Secrets encriptados com SOPS + age (nunca commitados em plaintext)
 - `.env` no `.gitignore` (gerado via `decrypt-secrets.sh`)

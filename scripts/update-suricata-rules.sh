@@ -13,7 +13,7 @@ mkdir -p "$RULES_DIR"
 echo "Downloading ET Open ruleset..."
 docker run --rm \
   -v "$RULES_DIR":/rules:rw \
-  jasonish/suricata:latest \
+  jasonish/suricata:7.0 \
   suricata-update -o /rules --no-reload --no-test 2>&1
 
 if [ -s "$RULES_DIR/suricata.rules" ]; then
