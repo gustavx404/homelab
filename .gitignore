@@ -1,0 +1,10 @@
+data/
+backups/
+
+.env
+*.log
+*.pid
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db

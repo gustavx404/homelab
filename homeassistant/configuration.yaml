@@ -1,0 +1,10 @@
+---
+default_config:
+
+homeassistant:
+  name: Home
+  unit_system: metric
+  time_zone: America/Sao_Paulo
+
+automation: !include automations.yaml
+script: !include scripts.yaml
