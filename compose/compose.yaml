@@ -56,9 +56,11 @@ services:
     restart: unless-stopped
 
   esphome:
-    image: ghcr.io/esphome/esphome:latest
+    image: ghcr.io/esphome/esphome:2024.11.0
     container_name: esphome
     network_mode: host
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - ../homeassistant/esphome:/config
       - /etc/localtime:/etc/localtime:ro
