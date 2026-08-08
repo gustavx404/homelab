@@ -1,162 +1,212 @@
 # homelab
 
-Infraestrutura do homelab gerenciada via Docker Compose com SOPS para secrets.
+> Infraestrutura Dockerizada com SOPS, CI/CD e 10 servicos.
+
+[![CI](https://github.com/gustavx404/homelab/actions/workflows/ci.yaml/badge.svg)](https://github.com/gustavx404/homelab/actions/workflows/ci.yaml)
+
+---
+
+## Arquitetura
+
+```
+Internet
+   │
+   ▼
+┌──────────────────────────────────────┐
+│  Caddy :80/:443 (reverse proxy)      │
+│  / → Home Assistant                  │
+│  /grafana → Grafana                  │
+│  /git → Forgejo                      │
+└──────────────────────────────────────┘
+   │
+   ▼  backend (bridge network)
+┌──────────┬──────────┬──────────┬──────────┬──────────┐
+│ mariadb  │ grafana  │prometheus│ forgejo  │  mumble  │
+│ (HA DB)  │ :3000    │ :9090    │ :3001/22 │ :64738   │
+└──────────┴──────────┴──────────┴──────────┴──────────┘
+   │
+   ▼  host network (dispositivos/mDNS)
+┌──────────┬──────────┬──────────────────┐
+│ suricata │ esphome  │ homeassistant    │
+│ IDS/IPS  │ :6052    │ :8123            │
+└──────────┴──────────┴──────────────────┘
+```
+
+---
 
 ## Stack
 
-| Servico | Descricao | Porta |
-| --- | --- | --- |
-| **Home Assistant** | Automacao residencial | `8123` |
-| **MariaDB** | Banco de dados (recorder do HA) | interno |
-| **ESPHome** | Firmware para dispositivos ESP | host |
-| **Mumble** | Servidor VoIP | `64738` TCP+UDP |
-| **Kali Linux** | Pentest/CTF (CLI) | interno |
-| **Caddy** | Reverse proxy (TLS automatico) | `80`, `443` |
-| **Forgejo** | Git self-hosted | `3001`, `2222` (SSH) |
-| **Prometheus** | Metricas | `9090` (localhost) |
-| **Grafana** | Dashboards | `3000` (localhost) |
-| **Suricata** | IDS/IPS | host |
+| Servico | Imagem | Porta | Funcao |
+|---------|--------|-------|--------|
+| **Home Assistant** | `ghcr.io/.../home-assistant:stable` | `8123` | Automacao residencial |
+| **MariaDB** | `mariadb:lts` | interno | Recorder HA (substitui SQLite) |
+| **ESPHome** | `ghcr.io/.../esphome:stable` | `6052` | Firmware ESP32/ESP8266 |
+| **Mumble** | `mumblevoip/mumble-server` | `64738` | VoIP (Ducks Server) |
+| **Kali Linux** | `kalilinux/kali-rolling` | CLI | Pentest, CTF, nmap |
+| **Caddy** | `caddy:2-alpine` | `80/443` | Reverse proxy + TLS |
+| **Forgejo** | `forgejo:16.0.2` | `3001/2222` | Git self-hosted |
+| **Prometheus** | `prom/prometheus:v3.4.0` | `9090` | Metricas |
+| **Grafana** | `grafana/grafana:11.6.0` | `3000` | Dashboards |
+| **Suricata** | `jasonish/suricata:7.0` | host | IDS/IPS (11 regras anti-scan) |
 
-## Estrutura
+---
 
-```
-compose/          Docker Compose + env + secrets
-homeassistant/    Configuracoes do Home Assistant + ESPHome
-caddy/            Reverse proxy (Caddyfile)
-forgejo/          Git self-hosted
-monitoring/       Prometheus + Grafana
-suricata/         IDS/IPS (regras + config)
-scripts/          Scripts utilitarios
-data/             Volumes persistentes (gitignored)
-```
-
-## Pre-requisitos
+## Quick Start
 
 ```bash
-# Docker + Compose
-sudo apt install -y docker.io docker-compose-v2
-sudo usermod -aG docker $USER
+# 1. Instalar dependencias
+sudo apt install -y docker.io docker-compose-v2 age yamllint
 
-# SOPS (secrets encryption)
+# 2. SOPS (binario direto)
 curl -LO https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.linux.amd64
 sudo mv sops-v3.13.3.linux.amd64 /usr/local/bin/sops
 sudo chmod +x /usr/local/bin/sops
 
-# age (SOPS backend)
-sudo apt install -y age
-
-# yamllint (CI opcional)
-sudo apt install -y yamllint
-```
-
-## Secrets: os 2 arquivos
-
-| Arquivo | Funcao | Dados |
-| --- | --- | --- |
-| `compose/.env.example` | Template documentando todas as variaveis | **Fakes** (exemplo: `senha=changeme`) |
-| `compose/sops-secrets.yaml` | Secrets reais encriptados com SOPS | **Reais** (senhas, localizacao) |
-
-O fluxo: voce edita `sops-secrets.yaml` com seus valores reais, e o script `decrypt-secrets.sh` gera o `.env` (que nunca e commitado).
-
-## Setup rapido
-
-```bash
-# 1. Instalar pre-requisitos (veja secao acima)
-
-# 2. Gerar chave age e configurar SOPS
+# 3. Gerar chave age
 age-keygen -o ~/.config/sops/age/keys.txt
-# Copie a public key para .sops.yaml
 
-# 3. Editar secrets com valores reais
+# 4. Copiar public key para .sops.yaml (substitua pela sua)
+#    age: age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# 5. Editar secrets com valores reais
 sops compose/sops-secrets.yaml
 
-# 4. Decriptar secrets para .env
+# 6. Gerar .env
 bash scripts/decrypt-secrets.sh
 
-# 5. Subir os servicos
+# 7. Subir tudo
 docker compose -f compose/compose.yaml up -d
 ```
 
-## Secrets (SOPS)
+---
 
-Secrets sensiveis (senhas, tokens) sao armazenados encriptados com SOPS + age em `compose/sops-secrets.yaml`.
+## Estrutura
 
-```bash
-# Editar secrets
-sops compose/sops-secrets.yaml
-
-# Decriptar para .env
-bash scripts/decrypt-secrets.sh
-
-# Recriar .env apos edicao
-sops compose/sops-secrets.yaml    # editar valores
-bash scripts/decrypt-secrets.sh   # gerar .env
+```
+├── compose/
+│   ├── compose.yaml          # Stack principal (10 servicos)
+│   ├── .env.example          # Template de variaveis (valores fake)
+│   └── sops-secrets.yaml     # Secrets encriptados (SOPS + age)
+├── homeassistant/
+│   ├── configuration.yaml    # Config do Home Assistant
+│   ├── secrets.yaml          # !env_var bridge pras env vars
+│   └── esphome/
+│       └── easun-4kw.yaml    # Inversor EASUN SMG II 11Kw
+├── caddy/
+│   └── Caddyfile             # Reverse proxy rules
+├── suricata/
+│   ├── suricata.yaml         # IDS/IPS config
+│   └── rules/suricata.rules  # Regras de deteccao (SYN, XMAS, etc)
+├── monitoring/
+│   ├── prometheus/prometheus.yml
+│   └── grafana/datasources.yml
+├── scripts/
+│   ├── decrypt-secrets.sh    # SOPS → .env
+│   └── update-suricata-rules.sh  # Baixar ET Open ruleset
+└── .github/workflows/
+    └── ci.yaml               # yamllint + compose validate + trivy scan
 ```
 
-## Servicos
+---
+
+## Secrets (SOPS + age)
+
+Dois arquivos, propositos diferentes:
+
+| Arquivo | Conteudo | Git |
+|---------|----------|-----|
+| `.env.example` | Template documentando todas as variaveis | ✅ commitado |
+| `sops-secrets.yaml` | Valores reais encriptados | ✅ commitado |
+| `.env` | Gerado pelo script, valores em plaintext | 🚫 gitignored |
+
+```bash
+sops compose/sops-secrets.yaml  # editar
+bash scripts/decrypt-secrets.sh # gerar .env
+```
+
+---
+
+## Servicos em detalhe
 
 ### Home Assistant + MariaDB
 
-O recorder do Home Assistant usa MariaDB para persistencia mais rapida e confiavel que o SQLite padrao. O container do HA espera o healthcheck do MariaDB antes de iniciar.
+Recorder usa MariaDB em vez de SQLite — mais rapido, confiavel, suporta historico longo sem corromper. O container HA espera o healthcheck do MariaDB (`condition: service_healthy`).
 
-### Mumble (Murmur)
+### Suricata — IDS/IPS
 
-Servidor VoIP open-source. Conecte com qualquer client Mumble em `<IP>:64738`.
+11 regras de deteccao ativas:
 
-```yaml
-# compose/sops-secrets.yaml
-MUMBLE_SUPERUSER_PASSWORD: "sua-senha-aqui"
-```
+| SID | Tipo | Detecta |
+|-----|------|---------|
+| 1000010 | SYN scan | `nmap -sS` |
+| 1000011 | connect() scan | `nmap -sT` |
+| 1000012 | NULL scan | `nmap -sN` |
+| 1000013 | FIN scan | `nmap -sF` |
+| 1000014 | XMAS scan | `nmap -sX` |
+| 1000020 | Port scan | 50+ portas em 10s |
+| 1000030 | UDP scan | `nmap -sU` |
+| 1000040 | SSH brute force | 5+ tentativas em 60s |
+| 1000050 | Path traversal | `../` em URL |
+| 1000051 | SQL injection | `union select` em URL |
 
-Apos subir, logue como `SuperUser` com a senha definida para administrar o servidor.
-
-### Kali Linux (CLI)
-
-Container Kali oficial para pentest e CTF. Ferramentas como nmap, metasploit, hydra, etc. Acesso via `docker exec`:
+Para baixar o ruleset completo ET Open (30.000+ regras):
 
 ```bash
-# Entrar no container
-docker exec -it kali bash
+bash scripts/update-suricata-rules.sh
+```
 
-# Instalar ferramentas adicionais
+### Mumble — Ducks Server
+
+Servidor VoIP com canais: Home, Study, Gaming, AFK. ACL maxima — apenas usuarios registrados conectam, anonimos barrados.
+
+### Kali Linux
+
+Container CLI com `NET_RAW` + `NET_ADMIN`. Acesso:
+
+```bash
+docker exec -it kali bash
 apt update && apt install -y kali-tools-top10
 ```
 
-O container ja tem `NET_RAW` e `NET_ADMIN` para scans de rede.
-
-### Reverse Proxy (Caddy)
-
-Caddy expoe os servicos web com TLS automatico (Let's Encrypt). Defina `DOMAIN` no `.env`:
-
-```bash
-DOMAIN=meuhomelab.duckdns.org
-```
-
-Rotas:
-- `/` -> Home Assistant
-- `/grafana/*` -> Grafana
-- `/git/*` -> Forgejo
-
 ### Seguranca
 
-- Servicos internos (Prometheus, Grafana) bindam apenas em `127.0.0.1`
-- MariaDB acessivel apenas na rede interna `backend`
-- Secrets encriptados com SOPS + age (nunca commitados em plaintext)
-- `.env` no `.gitignore` (gerado via `decrypt-secrets.sh`)
-- Suricata e ESPHome usam `network_mode: host` apenas quando necessario
+- Prometheus, Grafana bindam apenas em `127.0.0.1`
+- MariaDB acessivel somente na rede interna `backend`
+- Secrets encriptados com SOPS + age
+- `.env` nunca commitado
+- `network_mode: host` apenas onde necessario (Suricata, ESPHome)
+- Healthchecks em todos os 10 containers
+- Resource limits (memoria) em todos os containers
+- `no-new-privileges:true` em containers com `host` network
+- CI scan de vulnerabilidades com Trivy em todas as imagens
 
 ### Backup
 
-Volumes persistentes estao em `data/`. Recomendacao:
-
 ```bash
-# Backup dos volumes
+# Volumes
 tar -czf backup-$(date +%Y%m%d).tar.gz data/
 
-# Backup da chave age (CRITICO - sem ela nao decripta os secrets)
+# Chave age (CRITICO — sem ela, perde acesso aos secrets)
 cp ~/.config/sops/age/keys.txt backup-age-key.txt
 ```
 
+---
+
+## Creditos
+
+- **EASUN SMG II 11Kw ESPHome** — Configuracao do inversor baseada no projeto de [robgt978/easun-smg-ii-11kw-esphome](https://github.com/robgt978/Easun-SMG-II-11Kw-esphome-)
+- **Suricata rules** — Emerging Threats Open ruleset
+- **Mumble** — [mumblevoip/mumble-server](https://github.com/mumble-voip/mumble)
+
+---
+
 ## CI/CD
 
-GitHub Actions valida sintaxe YAML, compose, e faz scan de vulnerabilidades com Trivy em todo push e PR.
+GitHub Actions executa em todo push/PR:
+
+| Job | Funcao |
+|-----|--------|
+| `yamllint` | Valida sintaxe YAML em compose/, homeassistant/, suricata/, monitoring/ |
+| `compose-validate` | `docker compose config --quiet` |
+| `config-scan` | Trivy misconfiguration scan no compose/ |
+| `image-scan` | Trivy CVE scan em todas as 6 imagens (matrix job) |
