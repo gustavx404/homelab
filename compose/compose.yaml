@@ -79,6 +79,8 @@ services:
       - /etc/localtime:/etc/localtime:ro
     environment:
       - TZ=${TZ}
+      - ESPHOME_USERNAME=${ESPHOME_USERNAME:-admin}
+      - ESPHOME_PASSWORD=${ESPHOME_PASSWORD:-esphome}
     deploy:
       resources:
         limits:
@@ -229,10 +231,13 @@ services:
       - ../data/mumble:/data
     environment:
       TZ: "${TZ}"
-      MUMBLE_CONFIG_welcometext: "Welcome to Ducks Server! Quack quack! Channels: AFK | Study | Gaming"
+      MUMBLE_CONFIG_welcometext: "Welcome to Ducks Server! Quack quack! Channels: Home | Study | Gaming | AFK"
       MUMBLE_CONFIG_registername: "Ducks"
       MUMBLE_CONFIG_port: "64738"
       MUMBLE_CONFIG_users: "100"
+      MUMBLE_CONFIG_defaultchannel: "1"
+      MUMBLE_CONFIG_rememberchannel: "false"
+      MUMBLE_SUPERUSER_PASSWORD: "${MUMBLE_CONFIG_supw}"
     security_opt:
       - no-new-privileges:true
     deploy:
