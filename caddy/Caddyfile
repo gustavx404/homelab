@@ -22,5 +22,5 @@
   }
 
   # Default response for unmatched paths
-  respond "homelab caddy" 200
+  respond 404
 }
