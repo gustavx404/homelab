@@ -34,6 +34,7 @@ services:
   homeassistant:
     image: ghcr.io/home-assistant/home-assistant:stable
     container_name: homeassistant
+    entrypoint: ["/ha-entrypoint.sh"]
     networks:
       - backend
     ports:
@@ -41,12 +42,14 @@ services:
     volumes:
       - ../data/homeassistant:/config
       - /etc/localtime:/etc/localtime:ro
+      - ../homeassistant/ha-entrypoint.sh:/ha-entrypoint.sh:ro
     environment:
       - TZ=${TZ}
       - HOMEASSISTANT_LATITUDE=${HOMEASSISTANT_LATITUDE}
       - HOMEASSISTANT_LONGITUDE=${HOMEASSISTANT_LONGITUDE}
       - HOMEASSISTANT_ELEVATION=${HOMEASSISTANT_ELEVATION}
-      - RECORDER_DB_URL=mysql://${MARIADB_USER}:${MARIADB_PASSWORD}@mariadb/${MARIADB_DATABASE}?charset=utf8mb4
+    secrets:
+      - RECORDER_DB_URL
     depends_on:
       mariadb:
         condition: service_healthy
@@ -152,3 +155,5 @@ secrets:
     environment: MARIADB_USER
   MARIADB_PASSWORD:
     environment: MARIADB_PASSWORD
+  RECORDER_DB_URL:
+    environment: RECORDER_DB_URL
