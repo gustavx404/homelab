@@ -24,6 +24,10 @@ services:
       - --innodb-buffer-pool-size=256M
       - --innodb-log-file-size=64M
       - --max-connections=50
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
@@ -53,7 +57,16 @@ services:
     depends_on:
       mariadb:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1G
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8123/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   esphome:
     image: ghcr.io/esphome/esphome:2024.11.0
@@ -66,7 +79,16 @@ services:
       - /etc/localtime:/etc/localtime:ro
     environment:
       - TZ=${TZ}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:6052/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   prometheus:
     image: prom/prometheus:latest
@@ -82,7 +104,16 @@ services:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
       - "--web.enable-lifecycle"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9090/-/healthy || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   grafana:
     image: grafana/grafana:latest
@@ -98,7 +129,16 @@ services:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_SERVER_ROOT_URL=https://${DOMAIN:-localhost}/grafana
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   suricata:
     image: jasonish/suricata:latest
@@ -114,7 +154,16 @@ services:
       - ../suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - ../suricata/rules:/etc/suricata/rules:ro
       - ../data/suricata:/var/log/suricata
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep suricata > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   caddy:
     image: caddy:latest
@@ -127,7 +176,18 @@ services:
     volumes:
       - ../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ../data/caddy:/data
+    environment:
+      - CADDY_ADMIN=off
+    deploy:
+      resources:
+        limits:
+          memory: 128M
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   forgejo:
     image: codeberg.org/forgejo/forgejo:16.0.2
@@ -142,7 +202,16 @@ services:
       - /etc/localtime:/etc/localtime:ro
     environment:
       - FORGEJO__database__DB_TYPE=sqlite3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
 networks:
   backend:
