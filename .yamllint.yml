@@ -1,0 +1,12 @@
+---
+extends: default
+
+ignore: |
+  compose/sops-secrets.yaml
+
+rules:
+  document-start: disable
+  line-length:
+    max: 120
+  truthy:
+    allowed-values: ["true", "false", "yes", "no"]

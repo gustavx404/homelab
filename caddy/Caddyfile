@@ -1,3 +1,26 @@
-:80 {
-  respond "homelab caddy"
+# Caddy reverse proxy for homelab services
+# See: https://caddyserver.com/docs/caddyfile
+
+{$DOMAIN:localhost} {
+  # Home Assistant
+  reverse_proxy /api/websocket homeassistant:8123
+  reverse_proxy / homeassistant:8123
+
+  # Grafana
+  handle_path /grafana/* {
+    reverse_proxy grafana:3000
+  }
+
+  # Prometheus (internal only, uncomment if needed)
+  # handle_path /prometheus/* {
+  #   reverse_proxy prometheus:9090
+  # }
+
+  # Forgejo
+  handle_path /git/* {
+    reverse_proxy forgejo:3000
+  }
+
+  # Default response for unmatched paths
+  respond "homelab caddy" 200
 }

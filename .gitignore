@@ -8,3 +8,15 @@ __pycache__/
 *.pyc
 .DS_Store
 Thumbs.db
+
+# Age / SOPS keys - never commit
+keys.txt
+*.agekey
+
+# Plaintext secrets intermediates
+secrets.plain.*
+
+# ESPHome build artifacts
+homeassistant/esphome/.esphome/
+homeassistant/esphome/.device-builder*
+homeassistant/esphome/.git/

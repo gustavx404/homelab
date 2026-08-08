@@ -5,6 +5,12 @@ homeassistant:
   name: Home
   unit_system: metric
   time_zone: America/Sao_Paulo
+  latitude: !secret home_latitude
+  longitude: !secret home_longitude
+  elevation: !secret home_elevation
+
+recorder:
+  db_url: !secret recorder_db_url
 
 automation: !include automations.yaml
 script: !include scripts.yaml
