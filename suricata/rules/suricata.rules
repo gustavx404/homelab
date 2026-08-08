@@ -1,0 +1,11 @@
+# Default Suricata rules — minimal placeholder
+# Run `bash scripts/update-suricata-rules.sh` to download the full ET Open ruleset
+# which includes 30,000+ signatures.
+
+# ICMP ping detection (basic connectivity monitoring)
+alert icmp any any -> $HOME_NET any (msg:"ICMP ping detected"; sid:1000001; rev:1;)
+
+# SSH brute force detection (5+ attempts in 60s)
+alert tcp $EXTERNAL_NET any -> $HOME_NET 22 (msg:"Potential SSH brute force"; \
+  flow:to_server,established; threshold:type threshold, track by_src, count 5, seconds 60; \
+  sid:1000002; rev:1;)

@@ -103,6 +103,8 @@ services:
       - NET_ADMIN
       - NET_RAW
       - SYS_NICE
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - ../suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - ../suricata/rules:/etc/suricata/rules:ro
