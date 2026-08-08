@@ -228,7 +228,11 @@ services:
     volumes:
       - ../data/mumble:/data
     environment:
-      - TZ=${TZ}
+      TZ: "${TZ}"
+      MUMBLE_CONFIG_welcometext: "Welcome to Ducks Server! Quack quack! Channels: AFK | Study | Gaming"
+      MUMBLE_CONFIG_registername: "Ducks"
+      MUMBLE_CONFIG_port: "64738"
+      MUMBLE_CONFIG_users: "100"
     security_opt:
       - no-new-privileges:true
     deploy:
