@@ -33,10 +33,13 @@ services:
       - backend
     volumes:
       - ../homepage:/app/config
+      - ../homepage/icons:/app/public/icons
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - HOMEPAGE_ALLOWED_HOSTS=home.home,homepage,localhost
       - HOMEPAGE_HA_KEY=${HOMEPAGE_HA_KEY:-}
+      - HOMEPAGE_VAR_CROWDSEC_USERNAME=${CROWDSEC_HOMEPAGE_USERNAME:-}
+      - HOMEPAGE_VAR_CROWDSEC_PASSWORD=${CROWDSEC_HOMEPAGE_PASSWORD:-}
     deploy:
       resources:
         limits:

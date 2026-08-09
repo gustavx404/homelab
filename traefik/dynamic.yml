@@ -17,6 +17,10 @@ http:
       basicAuth:
         users:
           - "frigate:$2y$12$8qbhOjw2gna2jO31S9jvTulqUdzoQdgYWMjqe9lyI6dx9kKYAXMTe"
+    homepage-auth:
+      basicAuth:
+        users:
+          - "admin:$2y$12$oRR05QgihG8VWszzdlSjF.mC28TuOA4wGOAJmgGPDLWD11DLrKwI2"
 
   routers:
     homeassistant:
@@ -63,6 +67,8 @@ http:
       rule: "Host(`home.home`)"
       entryPoints:
         - websecure
+      middlewares:
+        - homepage-auth
       service: homepage
       tls: {}
 

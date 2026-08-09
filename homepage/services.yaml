@@ -27,7 +27,7 @@
 
 - Seguranca:
     - Suricata:
-        icon: suricata.png
+        icon: /icons/suricata.png
         href: null
         description: IDS/IPS — 12 assinaturas
         server: docker
@@ -39,6 +39,11 @@
         description: IPS — bloqueio na borda
         server: docker
         container: crowdsec
+        widget:
+          type: crowdsec
+          url: http://crowdsec:8080
+          username: "{{HOMEPAGE_VAR_CROWDSEC_USERNAME}}"
+          password: "{{HOMEPAGE_VAR_CROWDSEC_PASSWORD}}"
 
 - Servicos:
     - Forgejo:
