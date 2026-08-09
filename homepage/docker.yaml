@@ -1,4 +1,0 @@
----
-# Docker integration — requires docker socket
-docker:
-  socket: /var/run/docker.sock

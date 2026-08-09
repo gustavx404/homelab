@@ -2,29 +2,25 @@
 # Uso em automacoes: action: script.notify_alert / script.notify_home
 
 - id: notify_alert
-  alias: "Notificar topico alerts"
+  alias: "Notificar alerta (todos os destinos)"
   fields:
     message:
       description: "Mensagem a enviar"
       example: "Algo importante aconteceu"
   sequence:
-    - action: notify.send_message
-      target:
-        entity_id: notify.alerts
+    - action: notify.notify
       data:
         title: "Homelab"
         message: "{{ message }}"
 
 - id: notify_home
-  alias: "Notificar topico home"
+  alias: "Notificar informativo (todos os destinos)"
   fields:
     message:
       description: "Mensagem a enviar"
       example: "Movimento detectado"
   sequence:
-    - action: notify.send_message
-      target:
-        entity_id: notify.home
+    - action: notify.notify
       data:
         title: "Casa"
         message: "{{ message }}"

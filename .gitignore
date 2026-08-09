@@ -25,6 +25,3 @@ homeassistant/esphome/.git/
 data/crowdsec/
 crowdsec/web-ui/node_modules/
 crowdsec/web-ui/dist/
-homepage/kubernetes.yaml
-homepage/logs/
-homepage/proxmox.yaml

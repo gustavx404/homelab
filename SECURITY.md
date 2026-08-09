@@ -31,7 +31,6 @@ A chave privada **nunca** deve existir fora da maquina que roda o lab:
 
 - Unico ponto de entrada HTTP: Traefik (TLS auto-assinado). Nenhum app web exposto direto.
 - `no-new-privileges:true` nos containers; resource limits; healthchecks.
-- ntfy: auth `deny-all` + usuarios; topico de alerts protegido por access token (`tk_*`).
 - Prometheus bound a `127.0.0.1`. MariaDB isolado na rede backend.
 - CI (GitHub Actions) e **read-only**: yamllint, compose validate, trivy config/image.
   Nunca adicione job que decripte SOPS ou envie secrets para o runner.
@@ -53,7 +52,6 @@ diretamente. Nao exponha detalhes em issues publicas antes do fix.
 
 | Item | Frequencia sugerida |
 |---|---|
-| Senha do admin do HA / Homepage | semestral |
-| `HOMEPAGE_HA_KEY` (token longa duracao) | anual ou ao remover dispositivo |
-| `NTFY_TOKEN_CROWDSEC` | ao suspeitar de vazamento (regenerar: `ntfy token add crowdsec alerts`) |
+| Senha do admin do HA | semestral |
+| `HA_WEBHOOK_ID` | anual ou ao suspeitar de vazamento |
 | Chave age | imediatamente se qualquer copia for perdida/vazada |

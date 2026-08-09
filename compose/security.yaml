@@ -43,9 +43,8 @@ services:
       - COLLECTIONS=crowdsecurity/suricata
       - GID=1000
       - UID=1000
-      - NTFY_TOPIC_ALERTS=${NTFY_TOPIC_ALERTS:-alerts}
-      - NTFY_TOKEN_CROWDSEC=${NTFY_TOKEN_CROWDSEC:-}
       - CROWDSEC_DB_PASSWORD=${CROWDSEC_DB_PASSWORD:?CROWDSEC_DB_PASSWORD required}
+      - HA_WEBHOOK_ID=${HA_WEBHOOK_ID:-crowdsec_alerts}
     volumes:
       - ../data/suricata:/var/log/suricata:ro
       - crowdsec_data:/var/lib/crowdsec
@@ -53,8 +52,8 @@ services:
       - ../crowdsec/profiles.yaml:/etc/crowdsec/profiles.yaml:ro
       - ../crowdsec/scenarios/homelab-scan.yaml:/etc/crowdsec/scenarios/homelab-scan.yaml:ro
       - ../crowdsec/whitelists.yaml:/etc/crowdsec/parsers/s02-enrich/whitelists.yaml:ro
-      - ../crowdsec/notifications:/etc/crowdsec/notifications:ro
       - ../crowdsec/database.yaml:/etc/crowdsec/config.yaml.local:ro
+      - ../crowdsec/notifications:/etc/crowdsec/notifications:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     security_opt:
       - no-new-privileges:true

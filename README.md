@@ -1,9 +1,9 @@
 # homelab
 
-Infraestrutura auto-hospedada — Docker Compose, 15 servicos, rede zero-confianca.
+Infraestrutura auto-hospedada — Docker Compose, 13 servicos, rede zero-confianca.
 
 [![CI](https://github.com/gustavx404/homelab/actions/workflows/ci.yaml/badge.svg)](https://github.com/gustavx404/homelab/actions)
-[![servicos](https://img.shields.io/badge/servicos-15-3b82f6?style=flat-square)]()
+[![servicos](https://img.shields.io/badge/servicos-13-3b82f6?style=flat-square)]()
 [![suricata](https://img.shields.io/badge/suricata-12-6b7280?style=flat-square)]()
 [![secrets](https://img.shields.io/badge/secrets-sops%2Bage-6b7280?style=flat-square)]()
 
@@ -22,14 +22,12 @@ Internet → OpenWrt (borda + CrowdSec bouncer)
            │  grafana.home → Grafana
            │  git.home     → Forgejo
            │  frigate.home → Frigate (NVR)
-           │  home.home    → Homepage (dashboard)
-           │  ntfy.home    → ntfy (push)
            └──────┬───────┘
                   │  backend network (br-homelab)
-     ┌────────┬───┴───┬────────┬────────┬────────┬────────┬────────┐
-     ▼        ▼       ▼        ▼        ▼        ▼        ▼        ▼
-  mariadb  grafana prometheus forgejo  mumble  crowdsec  frigate  ntfy
-     └────────┴───────┴───┬────┴────────┴────│───┘
+     ┌────────┬───┴───┬────────┬────────┬────────┬────────┐
+     ▼        ▼       ▼        ▼        ▼        ▼        ▼
+  mariadb  grafana prometheus forgejo  mumble  crowdsec  frigate
+     └────────┴───────┴───┬────┴────────┴────┬───┘
                      host network             ▼
                suricata · esphome       LAPI :8080
                (eno1)     (:6052)       (→ OpenWrt)
@@ -64,7 +62,7 @@ bash scripts/decrypt-secrets.sh
 docker compose -f compose/compose.yaml up -d
 ```
 
-**DNS** — hostnames `.home` (ha, grafana, git, frigate, home, ntfy) resolvem via
+**DNS** — hostnames `.home` (ha, grafana, git, frigate) resolvem via
 dnsmasq do roteador OpenWrt (`/etc/hosts` no LuCI) para `192.168.20.189`.
 A lista de hostnames precisa bater com as rotas em `traefik/dynamic.yml`.
 
@@ -72,12 +70,10 @@ A lista de hostnames precisa bater com as rotas em `traefik/dynamic.yml`.
 
 | hostname | servico |
 |----------|---------|
-| `home.home` | Homepage (dashboard) |
 | `ha.home` | Home Assistant |
 | `grafana.home` | Grafana |
 | `git.home` | Forgejo |
 | `frigate.home` | Frigate (NVR) |
-| `ntfy.home` | ntfy (notificacoes push) |
 
 ---
 
@@ -92,11 +88,9 @@ A lista de hostnames precisa bater com as rotas em `traefik/dynamic.yml`.
 | security | suricata | `latest` | host |
 | security | suricata-stats | `python:3.13-alpine` | interno `8899` |
 | security | crowdsec | `latest` | `8080` lapi |
-| services | homepage | `latest` | interno |
 | services | forgejo | `16.0.2` | `2222` ssh |
 | services | mumble | `latest` | `64738` tcp/udp |
 | services | kali | `rolling` | cli |
-| notify | ntfy | `binwiederhier/ntfy:latest` | interno |
 | monitoring | prometheus | `v3.4.0` | `127.0.0.1:9090` |
 | monitoring | grafana | `11.6.0` | interno |
 | media | frigate | `stable` | interno |
@@ -117,8 +111,8 @@ Bancos e usuarios das apps sao criados no primeiro boot por
 `/docker-entrypoint-initdb.d`). Senhas centralizadas no SOPS
 (`FORGEJO_DB_PASSWORD`, `GRAFANA_DB_PASSWORD`, `CROWDSEC_DB_PASSWORD`).
 
-Nao usam MariaDB de proposito: Mumble/ntfy (SQLite — volume baixo ou sem
-suporte a MySQL, evitam dependencia no banco central).
+Nao usam MariaDB de proposito: Mumble (SQLite — volume baixo ou sem
+suporte a MySQL, evita dependencia no banco central).
 
 ---
 
@@ -134,8 +128,7 @@ compose/
 ├── security.yaml       suricata · crowdsec · suricata-stats
 ├── monitoring.yaml     prometheus · grafana
 ├── media.yaml          frigate (NVR)
-├── services.yaml       traefik · homepage · forgejo · mumble · kali
-├── notify.yaml         ntfy (notificacoes push)
+├── services.yaml       traefik · forgejo · mumble · kali
 ├── .env.example        template
 ├── sops-secrets.yaml   encriptado (SOPS + age)
 └── sops-secrets.template.yaml  template SOPS (init-sops)
@@ -180,7 +173,7 @@ Suricata monitora `eno1` e `br-homelab`. CrowdSec processa `eve.json` em tempo r
 | path traversal | — |
 | sql injection | — |
 
-O dashboard (Homepage) mostra stats em tempo real do Suricata via `suricata-stats` (endpoint interno `:8899` que le o `eve.json`): uptime, pacotes, drops e total de alertas. Apos editar `suricata/suricata.yaml`, recrie o container:
+`suricata-stats` expoe stats em tempo real do Suricata (endpoint interno `:8899` que le o `eve.json`): uptime, pacotes, drops e total de alertas. Apos editar `suricata/suricata.yaml`, recrie o container:
 
 ```bash
 docker compose -f compose/network.yaml -f compose/security.yaml up -d --force-recreate suricata
@@ -194,6 +187,14 @@ especifico vem primeiro, `on_success: break`):
 | reincidente (>=3 eventos) | 48 h |
 | padrao de scan | 24 h |
 | primeira deteccao | 6 h |
+
+**Notificacoes**: cada ban dispara um webhook para o Home Assistant
+(`crowdsec/notifications/ha-webhook.yaml`, perfil `ha_alerts` no
+`crowdsec/profiles.yaml`), que repassa o alerta para os apps via
+`notify.notify`. O ID do webhook vem do SOPS (`HA_WEBHOOK_ID`, default
+`crowdsec_alerts`) e a automacao correspondente esta em
+`homeassistant/automations.yaml`. Teste:
+`docker exec crowdsec cscli notifications test ha_alerts`.
 
 **Whitelist RFC1918**: `crowdsec/whitelists.yaml` branqueia `127.0.0.1`, a LAN
 (`192.168.20.0/24`) e as redes Docker (`172.16.0.0/12`, `10.0.0.0/8`) — trafego
@@ -242,74 +243,11 @@ Nenhum app web exposto diretamente — tudo passa pelo Traefik.
 - prometheus vinculado apenas a `127.0.0.1` (metricas internas)
 - mariadb isolado na rede `backend`
 - secrets encriptados com SOPS + age (`.env` gitignored)
-- ntfy com auth `deny-all`; topico de alerts protegido por access token
 - `network_mode: host` apenas onde necessario
 - `suricata-stats` le o `eve.json` somente-leitura (rede `backend`, porta interna, sem bind)
 - `no-new-privileges:true` nos containers host
 - healthchecks e resource limits em todos os containers
 - CI: yamllint, compose-validate, trivy config, trivy cve (9 imagens)
-
----
-
-## Notificacoes (ntfy)
-
-ntfy e o canal de push self-hosted: app no celular, Home Assistant e CrowdSec
-publicam nos topicos `alerts` (seguranca) e `home` (cotidiano).
-
-**Primeiro boot:**
-
-```bash
-docker compose -f compose/compose.yaml up -d ntfy
-
-# criar usuarios (auth deny-all)
-# senha admin: NTFY_ADMIN_PASSWORD no sops (sops compose/sops-secrets.yaml)
-docker exec -it ntfy ntfy user add --role=admin admin   # login web + HA
-docker exec ntfy ntfy user add crowdsec                 # service user p/ CrowdSec
-docker exec ntfy ntfy access crowdsec alerts rw         # ACL do topico alerts
-docker exec ntfy ntfy token add crowdsec alerts         # token tk_... -> NTFY_TOKEN_CROWDSEC (sops)
-
-# testar publish (com o token do topico)
-curl -u admin:SUA_SENHA -H "Title: teste" -H "Priority: high" \
-     -d "Homelab funcionando" https://ntfy.home/alerts
-```
-
-**Celular:** instale o app ntfy, use o servidor `https://ntfy.home` e faca login.
-
-**Home Assistant** (Settings > Devices & services > Add Integration > ntfy):
-URL `http://ntfy:80`, usuario/senha admin; adicione os topicos `alerts` e `home`
-(entidades `notify.alerts` / `notify.home` usadas em `homeassistant/automations.yaml`).
-
-**CrowdSec** publica automaticamente no topico de alerts (plugin http, config em
-`crowdsec/notifications/ntfy.yaml`). Teste: `docker exec crowdsec cscli notifications test ntfy_alerts`.
-
----
-
-## Dashboard (Homepage)
-
-Cards de status em `homepage/services.yaml` (rede `backend`, sem expor portas).
-
-Widgets ativos: Home Assistant, CrowdSec, Suricata (customapi), ntfy, Gitea
-(API do Forgejo), Frigate (`frigate:5000` — porta interna da API), Grafana
-(admin) e Prometheus. O card Traefik usa apenas status Docker
-(dashboard nao exposto).
-
-**Pendencias — chaves que ainda nao existem** (widgets aparecem com erro de
-auth ate serem criadas):
-
-```bash
-# 1. Forgejo (widget gitea mostra repos/issues/pulls):
-#    git.home > Settings > Applications > Generate New Token
-#    (permissao: read:notification, read:repository, read:issue)
-
-# 2. Guardar a chave no SOPS e regenerar o .env:
-sops compose/sops-secrets.yaml          # preencher FORGEJO_TOKEN
-bash scripts/decrypt-secrets.sh
-docker compose -f compose/compose.yaml up -d homepage
-```
-
-> Segredos (HOMEPAGE_HA_KEY, CrowdSec, ntfy e Grafana admin) chegam ao
-> container via `HOMEPAGE_VAR_*` (ver `compose/services.yaml`) — mesmo padrao
-> usado pelos demais widgets; dashboard protegido por basicAuth no Traefik.
 
 ---
 
@@ -360,7 +298,6 @@ docker compose -f compose/compose.yaml up -d
 | [Prometheus](https://prometheus.io/) | Prometheus |
 | [Frigate](https://frigate.video/) | Blake Blackshear |
 | [SOPS](https://github.com/getsops/sops) | Mozilla |
-| [ntfy](https://ntfy.sh/) | Philipp C. Heckel |
 | [age](https://github.com/FiloSottile/age) | Filippo Valsorda |
 
 Feito por [gustavx404](https://github.com/gustavx404).

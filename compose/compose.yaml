@@ -9,6 +9,5 @@ include:
   - home.yaml
   - security.yaml
   - monitoring.yaml
-  - notify.yaml
   - media.yaml
   - services.yaml

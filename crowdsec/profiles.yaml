@@ -10,7 +10,7 @@ decisions:
   - type: ban
     duration: 48h
 notifications:
-  - ntfy_alerts
+  - ha_alerts
 on_success: break
 ---
 name: scan_ban
@@ -20,7 +20,7 @@ decisions:
   - type: ban
     duration: 24h
 notifications:
-  - ntfy_alerts
+  - ha_alerts
 on_success: break
 ---
 name: default_ip_remediation
@@ -30,5 +30,5 @@ decisions:
   - type: ban
     duration: 6h
 notifications:
-  - ntfy_alerts
+  - ha_alerts
 on_success: break

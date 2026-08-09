@@ -1,11 +1,26 @@
 # Automations do Home Assistant
 # ============================================================================
-# Notificacoes via ntfy (integração "ntfy" — Settings > Devices & services > Add > ntfy):
-#   1. URL do servidor: http://ntfy:80 (interno, sem TLS)
-#   2. Usuario/senha: admin (criado em: docker exec ntfy ntfy user add --role=admin admin)
-#   3. Topics: adicione "alerts" e "home" -> entidades notify.alerts e notify.home
-# App no celular: instale o ntfy app, aponte para https://ntfy.home e faca login.
+# Notificacoes usam notify.notify (envia p/ todos os destinos registrados:
+# Companion App, persistent_notification, etc.)
+#
+# Para notificar so no celular, substitua notify.notify por
+# notify.mobile_app_SEU_DISPOSITIVO (ex: notify.mobile_app_iphone).
+# Encontre o ID em: Developer Tools > States > filtre "notify.mobile_app"
 # ============================================================================
+
+# --- CrowdSec webhook (recebe alerts do plugin HTTP do CrowdSec) ---
+# Descomente e ajuste o webhook_id apos definir HA_WEBHOOK_ID no sops.
+#
+# - id: crowdsec_alerts
+#   alias: "CrowdSec: alerta de ban via webhook"
+#   triggers:
+#     - trigger: webhook
+#       webhook_id: crowdsec_alerts
+#   actions:
+#     - action: notify.notify
+#       data:
+#         title: "CrowdSec"
+#         message: "{{ trigger.json.message }}"
 
 - id: frigate_person_alert
   alias: "Frigate: pessoa detectada (alerta)"
@@ -20,9 +35,7 @@
     - condition: template
       value_template: "{{ trigger.event.data.after.camera in ['front_gate', 'back_yard'] }}"
   actions:
-    - action: notify.send_message
-      target:
-        entity_id: notify.alerts
+    - action: notify.notify
       data:
         title: "Seguranca"
         message: "Pessoa detectada em {{ trigger.event.data.after.camera }}"
@@ -39,9 +52,7 @@
     - condition: template
       value_template: "{{ trigger.event.data.after.camera in ['front_gate', 'back_yard'] }}"
   actions:
-    - action: notify.send_message
-      target:
-        entity_id: notify.home
+    - action: notify.notify
       data:
         title: "Camera"
         message: "Movimento em {{ trigger.event.data.after.camera }}"

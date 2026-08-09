@@ -1,5 +1,5 @@
 # Traefik dynamic configuration — hostname-based routing
-# DNS: 192.168.20.189 ha.home grafana.home git.home frigate.home home.home ntfy.home
+# DNS: 192.168.20.189 ha.home grafana.home git.home frigate.home
 
 http:
   middlewares:
@@ -52,20 +52,6 @@ http:
       service: frigate
       tls: {}
 
-    homepage:
-      rule: "Host(`home.home`)"
-      entryPoints:
-        - websecure
-      service: homepage
-      tls: {}
-
-    ntfy:
-      rule: "Host(`ntfy.home`)"
-      entryPoints:
-        - websecure
-      service: ntfy
-      tls: {}
-
   services:
     homeassistant:
       loadBalancer:
@@ -88,12 +74,3 @@ http:
         servers:
           - url: "http://frigate:8971"
 
-    homepage:
-      loadBalancer:
-        servers:
-          - url: "http://homepage:3000"
-
-    ntfy:
-      loadBalancer:
-        servers:
-          - url: "http://ntfy:80"
