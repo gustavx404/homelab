@@ -16,7 +16,7 @@
     - ESPHome:
         icon: esphome.png
         href: http://192.168.20.189:6052
-        description: Firmware ESP32
+        description: Firmware ESP32 · dashboard
         server: docker
         container: esphome
 
