@@ -46,8 +46,7 @@ services:
     container_name: immich-server
     networks:
       - backend
-    ports:
-      - "2283:2283"       # UI/API (subpath nao suportado — porta dedicada)
+    # acesso via Traefik: https://photos.home (host-based; subpath nao suportado)
     volumes:
       - ${UPLOAD_LOCATION:-../data/immich/library}:/data
       - /etc/localtime:/etc/localtime:ro

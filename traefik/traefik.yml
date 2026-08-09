@@ -14,6 +14,11 @@ entryPoints:
           permanent: true
   websecure:
     address: ":443"
+    # timeouts longos p/ uploads do Immich (docs.immich.app/administration/reverse-proxy)
+    transport:
+      respondingTimeouts:
+        readTimeout: 600s
+        idleTimeout: 600s
 
 providers:
   file:

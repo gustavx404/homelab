@@ -1,5 +1,6 @@
 # Traefik dynamic configuration — path-based routing (any host)
 # Works with any IP or hostname — no hardcoded dependencies
+# Excecao: Immich nao suporta subpath — router host-based (photos.home)
 
 http:
   middlewares:
@@ -68,6 +69,16 @@ http:
       service: frigate
       tls: {}
 
+    # Immich — host-based (nao suporta subpath); acesso: https://photos.home
+    # DNS local obrigatorio (dnsmasq no OpenWrt ou /etc/hosts do dispositivo)
+    immich:
+      rule: "Host(`photos.home`)"
+      priority: 10
+      entryPoints:
+        - websecure
+      service: immich
+      tls: {}
+
     # Home Assistant — default (lowest priority)
     homeassistant:
       rule: "PathPrefix(`/`)"
@@ -100,3 +111,8 @@ http:
       loadBalancer:
         servers:
           - url: "http://frigate:8971"
+
+    immich:
+      loadBalancer:
+        servers:
+          - url: "http://immich-server:2283"

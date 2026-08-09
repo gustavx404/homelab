@@ -27,14 +27,14 @@ Internet → OpenWrt (borda + CrowdSec bouncer)
      ▼        ▼       ▼        ▼        ▼        ▼        ▼        ▼
   mariadb  grafana prometheus forgejo  mumble  crowdsec  immich  frigate
      └────────┴───────┴───┬────┴────────┴────│───┘       │        │
-                     host network             ▼     :2283  :8554/55
+                     host network             ▼   photos.home :8554/55
                suricata · esphome       LAPI :8080
                (eno1)     (:6052)       (→ OpenWrt)
 ```
 
 - Traefik e o unico ponto de entrada HTTP/S. Todos os apps web passam por ele.
 - Frigate acessivel em `/frigate` (header `X-Ingress-Path` + WebSocket).
-- Immich nao suporta subpath — exposto na porta `2283` (LAN).
+- Immich nao suporta subpath — roteado por hostname `photos.home` via Traefik (HTTPS, sem porta explicita).
 - Suricata e ESPHome usam `network_mode: host` por necessidade (packet capture / mDNS).
 - CrowdSec envia decisoes de ban para o OpenWrt na borda da rede.
 
@@ -62,7 +62,7 @@ bash scripts/decrypt-secrets.sh
 docker compose -f compose/compose.yaml up -d
 ```
 
-**Acesso** — roteamento por path, sem dependencia de DNS. TLS auto-assinado.
+**Acesso** — roteamento por path (sem dependencia de DNS publico) + um hostname LAN para o Immich. TLS auto-assinado.
 
 | path | servico |
 |------|---------|
@@ -71,7 +71,7 @@ docker compose -f compose/compose.yaml up -d
 | `/git/` | Forgejo |
 | `/frigate/` | Frigate (NVR cameras) |
 
-> Immich (fotos) nao suporta subpath — acessar em `http://<ip-do-host>:2283`.
+> Immich (fotos) nao suporta subpath — acesso em `https://photos.home` (registro DNS local: dnsmasq no OpenWrt ou /etc/hosts por dispositivo).
 
 ---
 
@@ -91,7 +91,7 @@ docker compose -f compose/compose.yaml up -d
 | monitoring | prometheus | `v3.4.0` | `127.0.0.1:9090` |
 | monitoring | grafana | `11.6.0` | interno |
 | media | frigate | `stable` | `/frigate` |
-| media | immich-server | `v3.1.0` | `2283` |
+| media | immich-server | `v3.1.0` | `https://photos.home` |
 | media | immich-machine-learning | `v3.1.0` | interno |
 | media | immich-redis (valkey) | `9` | interno |
 | media | immich-postgres | `14-vectorchord` | interno |
@@ -175,7 +175,6 @@ docker exec kali nmap -sS -p 1-100 <host>     # teste
 | `6052` | esphome | host network (mDNS) |
 | `64738` | mumble | protocolo VoIP |
 | `8080` | crowdsec lapi | bouncer OpenWrt |
-| `2283` | immich | fotos/videos (subpath nao suportado) |
 | `8554` | frigate | RTSP restream |
 | `8555` | frigate | WebRTC tcp/udp |
 
@@ -186,7 +185,8 @@ Frigate UI/API (8971) nao exposta — somente via Traefik em `/frigate`, protegi
 ## Seguranca
 
 - todos os apps web acessiveis via Traefik (HA, Grafana, Forgejo, Frigate)
-- Immich na porta 2283 (excecao documentada — subpath nao suportado; tem login proprio)
+- Immich em `https://photos.home` (unica excecao host-based ao roteamento por path; tem login proprio)
+- app mobile do Immich: aceitar certificado auto-assinado nas configuracoes do servidor
 - Frigate exige basicAuth no `/frigate` (Frigate nao tem login embutido)
 - RTSP/WebRTC do Frigate (8554/8555) sem auth — restringir por firewall/allowlist
 - prometheus vinculado apenas a `127.0.0.1` (metricas internas)
