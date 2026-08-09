@@ -19,7 +19,7 @@
     - MariaDB:
         icon: mariadb.png
         href: null
-        description: Banco central — HA · Vaultwarden · Forgejo · CrowdSec
+        description: Banco central — HA · Forgejo · CrowdSec · Grafana
         server: docker
         container: mariadb
 

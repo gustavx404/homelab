@@ -6,7 +6,6 @@
 set -euo pipefail
 
 : "${FORGEJO_DB_PASSWORD:?FORGEJO_DB_PASSWORD nao definida no .env}"
-: "${VAULTWARDEN_DB_PASSWORD:?VAULTWARDEN_DB_PASSWORD nao definida no .env}"
 : "${CROWDSEC_DB_PASSWORD:?CROWDSEC_DB_PASSWORD nao definida no .env}"
 : "${GRAFANA_DB_PASSWORD:?GRAFANA_DB_PASSWORD nao definida no .env}"
 

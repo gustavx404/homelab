@@ -1,6 +1,6 @@
 ---
 # Database stack: MariaDB central — banco compartilhado
-# Usado por: Home Assistant (recorder), Forgejo, Vaultwarden e CrowdSec.
+# Usado por: Home Assistant (recorder), Forgejo e CrowdSec.
 # Bancos/usuarios das apps: compose/database-init/ (criados no primeiro boot).
 
 services:

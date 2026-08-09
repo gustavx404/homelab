@@ -1,9 +1,9 @@
 # homelab
 
-Infraestrutura auto-hospedada — Docker Compose, 20 servicos, rede zero-confianca.
+Infraestrutura auto-hospedada — Docker Compose, 15 servicos, rede zero-confianca.
 
 [![CI](https://github.com/gustavx404/homelab/actions/workflows/ci.yaml/badge.svg)](https://github.com/gustavx404/homelab/actions)
-[![servicos](https://img.shields.io/badge/servicos-20-3b82f6?style=flat-square)]()
+[![servicos](https://img.shields.io/badge/servicos-15-3b82f6?style=flat-square)]()
 [![suricata](https://img.shields.io/badge/suricata-12-6b7280?style=flat-square)]()
 [![secrets](https://img.shields.io/badge/secrets-sops%2Bage-6b7280?style=flat-square)]()
 
@@ -22,13 +22,13 @@ Internet → OpenWrt (borda + CrowdSec bouncer)
            │  grafana.home → Grafana
            │  git.home     → Forgejo
            │  frigate.home → Frigate (NVR)
-           │  photos.home  → Immich (fotos)
-           │  vault.home   → Vaultwarden (senhas)
+           │  home.home    → Homepage (dashboard)
+           │  ntfy.home    → ntfy (push)
            └──────┬───────┘
                   │  backend network (br-homelab)
      ┌────────┬───┴───┬────────┬────────┬────────┬────────┬────────┐
      ▼        ▼       ▼        ▼        ▼        ▼        ▼        ▼
-  mariadb  grafana prometheus forgejo  mumble  crowdsec  immich  frigate
+  mariadb  grafana prometheus forgejo  mumble  crowdsec  frigate  ntfy
      └────────┴───────┴───┬────┴────────┴────│───┘
                      host network             ▼
                suricata · esphome       LAPI :8080
@@ -64,67 +64,19 @@ bash scripts/decrypt-secrets.sh
 docker compose -f compose/compose.yaml up -d
 ```
 
-**DNS** — o AdGuard Home (`compose/dns.yaml`) responde na porta 53 do host
-(`192.168.20.189:53`; upstream Quad9 via DoH, cache e filtro de anuncios).
-Para a LAN inteira usar o AdGuard como DNS, rode no roteador OpenWrt:
-
-```bash
-scp scripts/openwrt-dns-adguard.sh root@192.168.20.1:/tmp/
-ssh root@192.168.20.1 'sh /tmp/openwrt-dns-adguard.sh'
-```
-
-O script faz: dnsmasq encaminha tudo para `192.168.20.189#53` (`noresolv=1`) e o
-DHCP option 6 entrega `192.168.20.189` como DNS aos clientes (query log por
-cliente no AdGuard). Clientes com lease ativo so mudam ao renovar; force com
-`/etc/init.d/network restart` no roteador.
-
-> Com `noresolv=1`, se o AdGuard cair a LAN fica sem DNS — monitore o
-> healthcheck: `docker ps --filter name=adguard` (coluna STATUS).
-
-**DNS automatico (rewrites `.home`)** — o AdGuard resolve `*.home` sozinho,
-sem `/etc/hosts` manual. O script `scripts/adguard-rewrites.sh` detecta o IP do
-host como variavel do sistema (`ip -4 route get 1.1.1.1` — ignora as bridges do
-Docker), faz login na API do AdGuard e garante a rewrite `*.home -> <IP>`
-(idempotente; wildcard cobre qualquer subdominio novo automaticamente). Se o
-lease DHCP mudar, o watcher reaplica sozinho:
-
-- **systemd timer** a cada 30s: `scripts/adguard-rewrites.sh --check` (fast path —
-  so chama a API se o IP mudou);
-- **hook dhcpcd** (`/usr/lib/dhcpcd/dhcpcd-hooks/90-adguard-rewrites`): dispara na
-  hora da renovacao do lease (resposta imediata, sem esperar o timer);
-- **auto-cura de drift**: se a rewrite for apagada/resetada no AdGuard, o `--check`
-  detecta via probe DNS (1x a cada 5min, nome unico p/ evitar cache) e reaplica.
-
-Instalacao:
-
-```bash
-# 1) credenciais do admin do AdGuard (uma vez)
-sops compose/sops-secrets.yaml        # adicionar ADGUARD_USER / ADGUARD_PASSWORD
-bash scripts/decrypt-secrets.sh
-
-# 2) watcher (timer 30s + hook dhcpcd)
-sudo bash scripts/install-adguard-rewrites-watch.sh
-
-# 3) aplicar ja
-scripts/adguard-rewrites.sh --apply   # confira: dig @192.168.20.189 ha.home
-```
-
-A lista de hostnames no LuCI do OpenWrt (`/etc/hosts`) fica opcional — os clientes
-resolvem `*.home` direto pelo AdGuard (o dnsmasq do roteador ja encaminha tudo para
-ele). Remova a lista se quiser manter um unico ponto de verdade.
+**DNS** — hostnames `.home` (ha, grafana, git, frigate, home, ntfy) resolvem via
+dnsmasq do roteador OpenWrt (`/etc/hosts` no LuCI) para `192.168.20.189`.
+A lista de hostnames precisa bater com as rotas em `traefik/dynamic.yml`.
 
 **Acesso** — hostname-based routing, TLS auto-assinado.
 
 | hostname | servico |
 |----------|---------|
-| `adguard.home` | AdGuard Home (DNS) |
 | `home.home` | Homepage (dashboard) |
 | `ha.home` | Home Assistant |
 | `grafana.home` | Grafana |
 | `git.home` | Forgejo |
 | `frigate.home` | Frigate (NVR) |
-| `photos.home` | Immich (fotos) |
-| `vault.home` | Vaultwarden (senhas) |
 | `ntfy.home` | ntfy (notificacoes push) |
 
 ---
@@ -133,7 +85,6 @@ ele). Remova a lista se quiser manter um unico ponto de verdade.
 
 | stack | servico | imagem | acesso |
 |-------|---------|--------|--------|
-| dns | adguard | `adguard/adguardhome` | `53`, `3003` |
 | services | traefik | `v3.3` | `80,443` |
 | home | homeassistant | `stable` | interno |
 | database | mariadb | `lts` | interno |
@@ -145,15 +96,10 @@ ele). Remova a lista se quiser manter um unico ponto de verdade.
 | services | forgejo | `16.0.2` | `2222` ssh |
 | services | mumble | `latest` | `64738` tcp/udp |
 | services | kali | `rolling` | cli |
-| services | vaultwarden | `docker.io/vaultwarden/server:latest` | interno |
 | notify | ntfy | `binwiederhier/ntfy:latest` | interno |
 | monitoring | prometheus | `v3.4.0` | `127.0.0.1:9090` |
 | monitoring | grafana | `11.6.0` | interno |
 | media | frigate | `stable` | interno |
-| media | immich-server | `v3.1.0` | interno |
-| media | immich-machine-learning | `v3.1.0` | interno |
-| media | immich-redis (valkey) | `9` | interno |
-| media | immich-postgres | `14-vectorchord0.4.3-pgvectors0.2.0` | interno |
 
 ### Banco de dados (MariaDB)
 
@@ -163,17 +109,16 @@ MariaDB e o banco central (`compose/database.yaml`, rede `backend`), compartilha
 |-----|-------|---------|
 | Home Assistant (recorder) | homeassistant | ha_user |
 | Forgejo | forgejo | forgejo |
-| Vaultwarden | vaultwarden | vaultwarden |
+| Grafana | grafana | grafana |
 | CrowdSec | crowdsec | crowdsec |
 
 Bancos e usuarios das apps sao criados no primeiro boot por
 `compose/database-init/01-create-app-databases.sh` (montado em
 `/docker-entrypoint-initdb.d`). Senhas centralizadas no SOPS
-(`FORGEJO_DB_PASSWORD`, `VAULTWARDEN_DB_PASSWORD`, `CROWDSEC_DB_PASSWORD`).
+(`FORGEJO_DB_PASSWORD`, `GRAFANA_DB_PASSWORD`, `CROWDSEC_DB_PASSWORD`).
 
-Nao usam MariaDB de proposito: Immich (PostgreSQL + pgvector, exigido pelo ML
-de embeddings), Grafana/Mumble/ntfy (SQLite — volume baixo ou sem suporte a
-MySQL, evitam dependencia no banco central).
+Nao usam MariaDB de proposito: Mumble/ntfy (SQLite — volume baixo ou sem
+suporte a MySQL, evitam dependencia no banco central).
 
 ---
 
@@ -183,14 +128,13 @@ MySQL, evitam dependencia no banco central).
 compose/
 ├── compose.yaml        principal (include)
 ├── network.yaml        rede + secrets
-├── database.yaml       mariadb (banco central: HA · forgejo · vaultwarden · crowdsec)
+├── database.yaml       mariadb (banco central: HA · forgejo · grafana · crowdsec)
 ├── database-init/      01-create-app-databases.sh (bancos/usuarios no primeiro boot)
 ├── home.yaml           homeassistant · esphome
 ├── security.yaml       suricata · crowdsec · suricata-stats
 ├── monitoring.yaml     prometheus · grafana
-├── media.yaml          frigate · immich (server/ml/redis/postgres)
-├── services.yaml       traefik · forgejo · mumble · kali
-├── vaultwarden.yaml    vaultwarden (senhas)
+├── media.yaml          frigate (NVR)
+├── services.yaml       traefik · homepage · forgejo · mumble · kali
 ├── notify.yaml         ntfy (notificacoes push)
 ├── .env.example        template
 ├── sops-secrets.yaml   encriptado (SOPS + age)
@@ -213,7 +157,7 @@ docker compose -f compose/network.yaml -f compose/database.yaml -f compose/home.
 docker compose -f compose/network.yaml -f compose/media.yaml up -d
 ```
 
-Stacks que usam o banco central (home, security, services, vaultwarden) exigem compose/database.yaml na lista.
+Stacks que usam o banco central (home, security, services, monitoring) exigem compose/database.yaml na lista.
 
 ---
 
@@ -298,13 +242,12 @@ Nenhum app web exposto diretamente — tudo passa pelo Traefik.
 - prometheus vinculado apenas a `127.0.0.1` (metricas internas)
 - mariadb isolado na rede `backend`
 - secrets encriptados com SOPS + age (`.env` gitignored)
-- painel `/admin` do Vaultwarden protegido por `ADMIN_TOKEN` (SOPS); signups desabilitados
 - ntfy com auth `deny-all`; topico de alerts protegido por access token
 - `network_mode: host` apenas onde necessario
 - `suricata-stats` le o `eve.json` somente-leitura (rede `backend`, porta interna, sem bind)
 - `no-new-privileges:true` nos containers host
 - healthchecks e resource limits em todos os containers
-- CI: yamllint, compose-validate, trivy config, trivy cve (15 imagens)
+- CI: yamllint, compose-validate, trivy config, trivy cve (9 imagens)
 
 ---
 
@@ -346,22 +289,20 @@ URL `http://ntfy:80`, usuario/senha admin; adicione os topicos `alerts` e `home`
 Cards de status em `homepage/services.yaml` (rede `backend`, sem expor portas).
 
 Widgets ativos: Home Assistant, CrowdSec, Suricata (customapi), ntfy, Gitea
-(API do Forgejo), Frigate (`frigate:5000` — porta interna da API), Immich,
-Grafana (admin) e Prometheus. O card Traefik usa apenas status Docker
+(API do Forgejo), Frigate (`frigate:5000` — porta interna da API), Grafana
+(admin) e Prometheus. O card Traefik usa apenas status Docker
 (dashboard nao exposto).
 
 **Pendencias — chaves que ainda nao existem** (widgets aparecem com erro de
 auth ate serem criadas):
 
 ```bash
-# 1. Immich (widget mostra fotos/usuarios):
-#    photos.home > Perfil > API Keys > New API Key (permissao: server.statistics)
-# 2. Forgejo (widget gitea mostra repos/issues/pulls):
+# 1. Forgejo (widget gitea mostra repos/issues/pulls):
 #    git.home > Settings > Applications > Generate New Token
 #    (permissao: read:notification, read:repository, read:issue)
 
-# 3. Guardar as chaves no SOPS e regenerar o .env:
-sops compose/sops-secrets.yaml          # preencher IMMICH_API_KEY e FORGEJO_TOKEN
+# 2. Guardar a chave no SOPS e regenerar o .env:
+sops compose/sops-secrets.yaml          # preencher FORGEJO_TOKEN
 bash scripts/decrypt-secrets.sh
 docker compose -f compose/compose.yaml up -d homepage
 ```
@@ -413,13 +354,11 @@ docker compose -f compose/compose.yaml up -d
 | [Mumble](https://github.com/mumble-voip/mumble) | Mumble VoIP |
 | [Traefik](https://github.com/traefik/traefik) | Traefik Labs |
 | [Forgejo](https://forgejo.org/) | Forgejo |
-| [Vaultwarden](https://github.com/dani-garcia/vaultwarden) | dani-garcia |
 | [ESPHome](https://esphome.io/) | ESPHome |
 | [Home Assistant](https://www.home-assistant.io/) | Home Assistant |
 | [Grafana](https://grafana.com/) | Grafana Labs |
 | [Prometheus](https://prometheus.io/) | Prometheus |
 | [Frigate](https://frigate.video/) | Blake Blackshear |
-| [Immich](https://immich.app/) | Immich (FUTO) |
 | [SOPS](https://github.com/getsops/sops) | Mozilla |
 | [ntfy](https://ntfy.sh/) | Philipp C. Heckel |
 | [age](https://github.com/FiloSottile/age) | Filippo Valsorda |

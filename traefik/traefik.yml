@@ -14,7 +14,7 @@ entryPoints:
           permanent: true
   websecure:
     address: ":443"
-    # timeouts longos p/ uploads do Immich (docs.immich.app/administration/reverse-proxy)
+    # timeouts longos p/ uploads de midia (frigate/HA)
     transport:
       respondingTimeouts:
         readTimeout: 600s
