@@ -62,10 +62,10 @@ alert tcp any any -> $HOME_NET any (msg:"Aggressive port scan detected"; \
 # UDP Scan
 # ============================================================
 
-# UDP scan: 5+ packets in 3s
-alert udp any any -> $HOME_NET any (msg:"UDP scan detected"; \
+# UDP scan: 5+ packets in 3s (exclui DNS/53)
+alert udp any any -> $HOME_NET !53 (msg:"UDP scan detected"; \
   threshold:type both, track by_src, count 5, seconds 3; \
-  sid:1000030; rev:2;)
+  sid:1000030; rev:3;)
 
 # ============================================================
 # Service-Specific
