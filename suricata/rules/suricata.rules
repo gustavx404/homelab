@@ -1,52 +1,54 @@
 # Suricata rules — scan detection + basic protection
 # Run `bash scripts/update-suricata-rules.sh` to download the full ET Open ruleset
+# Priority 2 = Medium (CrowdSec age em priority 1 e 2)
 
 # ============================================================
 # ICMP / Ping
 # ============================================================
 
-# ICMP ping (single)
+# ICMP ping (single, low priority — info only)
 alert icmp any any -> $HOME_NET any (msg:"ICMP echo request (ping)"; \
-  itype:8; sid:1000001; rev:3;)
+  itype:8; priority:3; classtype:misc-activity; sid:1000001; rev:4;)
 
 # ICMP sweep (10+ hosts in 30s)
 alert icmp any any -> $HOME_NET any (msg:"ICMP ping sweep detected"; \
-  itype:8; threshold:type threshold, track by_src, count 10, seconds 30; \
-  sid:1000003; rev:1;)
+  itype:8; priority:2; classtype:attempted-recon; \
+  threshold:type threshold, track by_src, count 10, seconds 30; \
+  sid:1000003; rev:2;)
 
 # ============================================================
-# TCP Scan Detection (any source, low threshold)
+# TCP Scan Detection (priority 2 — CrowdSec age)
 # ============================================================
 
 # SYN scan (nmap -sS): 5+ SYNs in 3s
 alert tcp any any -> $HOME_NET any (msg:"TCP SYN scan detected"; \
-  flags:S; flow:stateless; \
+  flags:S; flow:stateless; priority:2; classtype:attempted-recon; \
   threshold:type both, track by_src, count 5, seconds 3; \
-  sid:1000010; rev:2;)
+  sid:1000010; rev:3;)
 
 # Connect scan (nmap -sT): 5+ established in 3s
 alert tcp any any -> $HOME_NET any (msg:"TCP connect() scan detected"; \
-  flow:to_server,established; \
+  flow:to_server,established; priority:2; classtype:attempted-recon; \
   threshold:type both, track by_src, count 5, seconds 3; \
-  sid:1000011; rev:2;)
+  sid:1000011; rev:3;)
 
 # NULL scan (nmap -sN)
 alert tcp any any -> $HOME_NET any (msg:"TCP NULL scan detected"; \
-  flags:0; flow:stateless; \
+  flags:0; flow:stateless; priority:2; classtype:attempted-recon; \
   threshold:type threshold, track by_src, count 3, seconds 10; \
-  sid:1000012; rev:2;)
+  sid:1000012; rev:3;)
 
 # FIN scan (nmap -sF)
 alert tcp any any -> $HOME_NET any (msg:"TCP FIN scan detected"; \
-  flags:F; flow:stateless; \
+  flags:F; flow:stateless; priority:2; classtype:attempted-recon; \
   threshold:type threshold, track by_src, count 3, seconds 10; \
-  sid:1000013; rev:2;)
+  sid:1000013; rev:3;)
 
 # XMAS scan (nmap -sX)
 alert tcp any any -> $HOME_NET any (msg:"TCP XMAS scan detected"; \
-  flags:FPU; flow:stateless; \
+  flags:FPU; flow:stateless; priority:2; classtype:attempted-recon; \
   threshold:type threshold, track by_src, count 3, seconds 10; \
-  sid:1000014; rev:2;)
+  sid:1000014; rev:3;)
 
 # ============================================================
 # Port Scan (general)
@@ -54,9 +56,9 @@ alert tcp any any -> $HOME_NET any (msg:"TCP XMAS scan detected"; \
 
 # Port scan: 10+ unique ports in 5s
 alert tcp any any -> $HOME_NET any (msg:"Aggressive port scan detected"; \
-  flags:S; flow:stateless; \
+  flags:S; flow:stateless; priority:2; classtype:attempted-recon; \
   threshold:type both, track by_src, count 10, seconds 5; \
-  sid:1000020; rev:2;)
+  sid:1000020; rev:3;)
 
 # ============================================================
 # UDP Scan
@@ -64,27 +66,30 @@ alert tcp any any -> $HOME_NET any (msg:"Aggressive port scan detected"; \
 
 # UDP scan: 5+ packets in 3s (exclui DNS/53)
 alert udp any any -> $HOME_NET !53 (msg:"UDP scan detected"; \
+  priority:2; classtype:attempted-recon; \
   threshold:type both, track by_src, count 5, seconds 3; \
-  sid:1000030; rev:3;)
+  sid:1000030; rev:4;)
 
 # ============================================================
-# Service-Specific
+# Service-Specific Intrusions
 # ============================================================
 
-# SSH brute force: 8+ new connections in 30s (from same source)
+# SSH brute force: 8+ new connections in 30s
 alert tcp any any -> $HOME_NET 22 (msg:"SSH brute force detected"; \
-  flow:to_server; flags:S; \
+  flow:to_server; flags:S; priority:2; classtype:attempted-admin; \
   threshold:type threshold, track by_src, count 8, seconds 30; \
-  sid:1000040; rev:4;)
+  sid:1000040; rev:5;)
 
 # HTTP path traversal
 alert tcp any any -> $HOME_NET $HTTP_PORTS (msg:"HTTP path traversal attempt"; \
   flow:to_server,established; content:"../"; http_uri; nocase; \
-  sid:1000050; rev:2;)
+  priority:2; classtype:web-application-attack; \
+  sid:1000050; rev:3;)
 
 # HTTP SQL injection probe
 alert tcp any any -> $HOME_NET $HTTP_PORTS (msg:"HTTP SQL injection probe"; \
   flow:to_server,established; \
   content:"union"; nocase; http_uri; fast_pattern; \
   content:"select"; nocase; http_uri; distance:0; \
-  sid:1000051; rev:2;)
+  priority:2; classtype:web-application-attack; \
+  sid:1000051; rev:3;)

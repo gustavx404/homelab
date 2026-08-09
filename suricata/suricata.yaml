@@ -15,6 +15,9 @@ af-packet:
   - interface: eno1
     cluster-id: 99
     cluster-type: cluster_flow
+  - interface: br-homelab
+    cluster-id: 98
+    cluster-type: cluster_flow
 
 outputs:
   - fast:
