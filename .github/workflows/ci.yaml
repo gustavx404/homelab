@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ibiqlik/action-yamllint@v3
         with:
-          file_or_dir: compose/ homeassistant/ suricata/ monitoring/ crowdsec/ traefik/
+          file_or_dir: compose/ homeassistant/ suricata/ monitoring/ crowdsec/ traefik/ frigate/
 
   compose-validate:
     runs-on: ubuntu-latest
@@ -50,6 +50,11 @@ jobs:
           - prom/prometheus:v3.4.0
           - codeberg.org/forgejo/forgejo:16.0.2
           - crowdsecurity/crowdsec:latest
+          - ghcr.io/blakeblackshear/frigate:stable
+          - ghcr.io/immich-app/immich-server:v3.1.0
+          - ghcr.io/immich-app/immich-machine-learning:v3.1.0
+          - valkey/valkey:9
+          - ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
     steps:
       - uses: actions/checkout@v4
       - name: Scan ${{ matrix.image }}

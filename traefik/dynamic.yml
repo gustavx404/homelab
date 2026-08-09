@@ -17,6 +17,14 @@ http:
       stripPrefix:
         prefixes:
           - "/git"
+    frigate-strip:
+      stripPrefix:
+        prefixes:
+          - "/frigate"
+    frigate-headers:
+      headers:
+        customRequestHeaders:
+          X-Ingress-Path: "/frigate"
 
   routers:
     # Grafana — higher priority, path-based
@@ -39,6 +47,18 @@ http:
       middlewares:
         - git-strip
       service: forgejo
+      tls: {}
+
+    # Frigate — path-based
+    frigate:
+      rule: "PathPrefix(`/frigate`)"
+      priority: 10
+      entryPoints:
+        - websecure
+      middlewares:
+        - frigate-strip
+        - frigate-headers
+      service: frigate
       tls: {}
 
     # Home Assistant — default (lowest priority)
@@ -68,3 +88,8 @@ http:
       loadBalancer:
         servers:
           - url: "http://forgejo:3000"
+
+    frigate:
+      loadBalancer:
+        servers:
+          - url: "http://frigate:8971"

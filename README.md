@@ -1,9 +1,9 @@
 # homelab
 
-Infraestrutura auto-hospedada — Docker Compose, 11 services, rede zero-confianca.
+Infraestrutura auto-hospedada — Docker Compose, 16 services, rede zero-confianca.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/gustavx404/homelab/ci.yaml?style=flat-square&label=ci&color=10b981)](https://github.com/gustavx404/homelab/actions)
-[![services](https://img.shields.io/badge/services-11-3b82f6?style=flat-square)]()
+[![services](https://img.shields.io/badge/services-16-3b82f6?style=flat-square)]()
 [![suricata](https://img.shields.io/badge/suricata-8-6b7280?style=flat-square)]()
 [![secrets](https://img.shields.io/badge/secrets-sops%2Bage-6b7280?style=flat-square)]()
 
@@ -22,16 +22,18 @@ Internet → OpenWrt (borda + CrowdSec bouncer)
            │  /git        │
            └──────┬───────┘
                   │  backend network (br-homelab)
-     ┌────────┬───┴───┬────────┬────────┬────────┐
-     ▼        ▼       ▼        ▼        ▼        ▼
-  mariadb  grafana prometheus forgejo  mumble  crowdsec
-     └────────┴───────┴───┬────┴────────┴────│───┘
-                     host network             ▼
+     ┌────────┬───┴───┬────────┬────────┬────────┬────────┬────────┐
+     ▼        ▼       ▼        ▼        ▼        ▼        ▼        ▼
+  mariadb  grafana prometheus forgejo  mumble  crowdsec  immich  frigate
+     └────────┴───────┴───┬────┴────────┴────│───┘       │        │
+                     host network             ▼     :2283  :8554/55
                suricata · esphome       LAPI :8080
                (eno1)     (:6052)       (→ OpenWrt)
 ```
 
 - Traefik e o unico ponto de entrada HTTP/S. Todos os apps web passam por ele.
+- Frigate usa path `/frigate` (header `X-Ingress-Path` + WebSocket). Immich nao suporta
+  subpath — exposto na porta dedicada `2283` (LAN).
 - Suricata e ESPHome usam `network_mode: host` por necessidade (packet capture / mDNS).
 - CrowdSec envia decisoes de ban para o OpenWrt na borda da rede.
 
@@ -66,6 +68,9 @@ docker compose -f compose/compose.yaml up -d
 | `/` | Home Assistant |
 | `/grafana/` | Grafana |
 | `/git/` | Forgejo |
+| `/frigate/` | Frigate (NVR) |
+
+> Immich (fotos) nao suporta subpath — acesse em `http://192.168.20.189:2283`.
 
 ---
 
@@ -84,6 +89,11 @@ docker compose -f compose/compose.yaml up -d
 | services | kali | `rolling` | cli |
 | monitoring | prometheus | `v3.4.0` | `127.0.0.1:9090` |
 | monitoring | grafana | `11.6.0` | internal |
+| media | frigate | `stable` | `/frigate` |
+| media | immich-server | `v3.1.0` | `2283` |
+| media | immich-machine-learning | `v3.1.0` | internal |
+| media | immich-redis (valkey) | `9` | internal |
+| media | immich-postgres | `14-vectorchord` | internal |
 
 ---
 
@@ -96,11 +106,13 @@ compose/
 ├── home.yaml           mariadb · homeassistant · esphome
 ├── security.yaml       suricata · crowdsec
 ├── monitoring.yaml     prometheus · grafana
+├── media.yaml          frigate · immich (server/ml/redis/postgres)
 ├── services.yaml       traefik · forgejo · mumble · kali
 ├── .env.example        template
 └── sops-secrets.yaml   encrypted (SOPS + age)
 
 traefik/                reverse proxy config
+frigate/                NVR config (detector CPU, camera placeholder)
 suricata/               IDS config + 12 signatures
 crowdsec/               acquis · profiles · scenarios · whitelist
 homeassistant/          HA config + ESPHome devices
@@ -161,6 +173,11 @@ docker exec kali nmap -sS -p 1-100 <host>     # test
 | `6052` | esphome | host network (mDNS) |
 | `64738` | mumble | VoIP protocol |
 | `8080` | crowdsec lapi | OpenWrt bouncer |
+| `2283` | immich | fotos/videos (subpath nao suportado) |
+| `8554` | frigate | RTSP restream |
+| `8555` | frigate | WebRTC tcp/udp |
+
+Frigate UI/API (8971) nao e exposta — somente via Traefik em `/frigate` com auth.
 
 Prometheus bound to `127.0.0.1` only. Zero web apps exposed directly — everything through Traefik.
 
@@ -168,21 +185,22 @@ Prometheus bound to `127.0.0.1` only. Zero web apps exposed directly — everyth
 
 ## Security
 
-- all web apps accessible only via Traefik (HA, Grafana, Forgejo)
+- all web apps via Traefik (HA, Grafana, Forgejo, Frigate); excecao documentada:
+  Immich na porta 2283 (subpath nao suportado pelo Immich)
 - prometheus bound to `127.0.0.1` only (internal metrics)
 - mariadb isolated on `backend` network
 - secrets encrypted with SOPS + age (`.env` gitignored)
 - `network_mode: host` only where necessary
 - `no-new-privileges:true` on host containers
 - healthchecks and resource limits on all containers
-- CI: yamllint, compose-validate, trivy config, trivy cve (7 images)
+- CI: yamllint, compose-validate, trivy config, trivy cve (12 images)
 
 ---
 
 ## Backup
 
 ```bash
-tar -czf backup-$(date +%Y%m%d).tar.gz data/
+tar -czf backup-$(date +%Y%m%d).tar.gz data/  # inclui immich/ (library+postgres) e frigate/
 cp ~/.config/sops/age/keys.txt backup-age-key.txt
 ```
 
@@ -202,6 +220,8 @@ cp ~/.config/sops/age/keys.txt backup-age-key.txt
 | [Home Assistant](https://www.home-assistant.io/) | Home Assistant |
 | [Grafana](https://grafana.com/) | Grafana Labs |
 | [Prometheus](https://prometheus.io/) | Prometheus |
+| [Frigate](https://frigate.video/) | Blake Blackshear |
+| [Immich](https://immich.app/) | Immich (FUTO) |
 | [SOPS](https://github.com/getsops/sops) | Mozilla |
 | [age](https://github.com/FiloSottile/age) | Filippo Valsorda |
 

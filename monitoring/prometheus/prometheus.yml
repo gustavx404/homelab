@@ -25,3 +25,9 @@ scrape_configs:
     static_configs:
       - targets:
           - forgejo:3000
+
+  - job_name: frigate
+    metrics_path: /api/metrics
+    static_configs:
+      - targets:
+          - frigate:5000
