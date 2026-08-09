@@ -2,6 +2,12 @@
 
 http:
   middlewares:
+    ha-headers:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-For: ""
+          X-Forwarded-Host: ""
+          X-Forwarded-Proto: ""
     grafana-strip:
       stripPrefix:
         prefixes:
@@ -16,6 +22,8 @@ http:
       rule: "Host(`localhost`)"
       entryPoints:
         - websecure
+      middlewares:
+        - ha-headers
       service: homeassistant
       tls: {}
 
