@@ -68,34 +68,6 @@ services:
       retries: 3
       start_period: 30s
 
-  crowdsec-web-ui:
-    build:
-      context: ../crowdsec/web-ui
-      dockerfile: Dockerfile
-    image: homelab-crowdsec-web-ui:latest
-    container_name: crowdsec-web-ui
-    networks:
-      - backend
-    environment:
-      - CONFIG_INSTANCE_LAPI_URL=http://crowdsec:8080
-      - CONFIG_INSTANCE_LAPI_AUTH_USERNAME=crowdsec-web-ui
-      - CONFIG_INSTANCE_LAPI_AUTH_PASSWORD=${CROWDSEC_WEBUI_LAPI_PASSWORD}
-      - CONFIG_CROWDSEC_ALERT_FILTERS_INCLUDE_ORIGINS=[crowdsec]
-    volumes:
-      - crowdsec_webui_data:/app/data
-      - ../crowdsec/web-ui-config.yaml:/app/data/config.yaml:ro
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "node -e 'require(\"http\").get(\"http://localhost:3000/\",r=>{process.exit(r.statusCode===200?0:1)})' || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
 volumes:
   crowdsec_data:
   crowdsec_webui_data:

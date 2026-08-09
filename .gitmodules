@@ -1,3 +1,0 @@
-[submodule "crowdsec/web-ui"]
-	path = crowdsec/web-ui
-	url = https://github.com/TheDuffman85/crowdsec-web-ui.git
