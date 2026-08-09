@@ -17,6 +17,10 @@ http:
       stripPrefix:
         prefixes:
           - "/git"
+    crowdsec-strip:
+      stripPrefix:
+        prefixes:
+          - "/crowdsec"
 
   routers:
     # Grafana — higher priority, path-based
@@ -39,6 +43,17 @@ http:
       middlewares:
         - git-strip
       service: forgejo
+      tls: {}
+
+    # CrowdSec Web UI — /crowdsec
+    crowdsec-web-ui:
+      rule: "PathPrefix(`/crowdsec`)"
+      priority: 10
+      entryPoints:
+        - websecure
+      middlewares:
+        - crowdsec-strip
+      service: crowdsec-web-ui
       tls: {}
 
     # Home Assistant — default (lowest priority)
@@ -68,3 +83,8 @@ http:
       loadBalancer:
         servers:
           - url: "http://forgejo:3000"
+
+    crowdsec-web-ui:
+      loadBalancer:
+        servers:
+          - url: "http://crowdsec-web-ui:3000"
