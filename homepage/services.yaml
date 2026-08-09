@@ -39,6 +39,23 @@
         description: IDS/IPS — 12 assinaturas
         server: docker
         container: suricata
+        widget:
+          type: customapi
+          url: http://suricata-stats:8899/stats
+          refreshInterval: 30000
+          mappings:
+            - field: alerts
+              label: Alertas
+              format: number
+            - field: http
+              label: HTTP
+              format: number
+            - field: dns
+              label: DNS
+              format: number
+            - field: tls
+              label: TLS
+              format: number
 
     - CrowdSec:
         icon: crowdsec.png
