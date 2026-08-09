@@ -1,5 +1,6 @@
-# Traefik dynamic configuration — routers, services, middlewares
-# Access via: https://192.168.20.189/ (HA), /grafana, /git
+# Traefik dynamic configuration — subdomain routing
+# Access: ha.homelab.lan | grafana.homelab.lan | git.homelab.lan
+# Add to /etc/hosts: 192.168.20.189 ha.homelab.lan grafana.homelab.lan git.homelab.lan
 
 http:
   middlewares:
@@ -9,18 +10,10 @@ http:
           X-Forwarded-For: ""
           X-Forwarded-Host: ""
           X-Forwarded-Proto: ""
-    grafana-strip:
-      stripPrefix:
-        prefixes:
-          - "/grafana"
-    git-strip:
-      stripPrefix:
-        prefixes:
-          - "/git"
 
   routers:
     homeassistant:
-      rule: "Host(`192.168.20.189`)"
+      rule: "Host(`ha.homelab.lan`)"
       entryPoints:
         - websecure
       middlewares:
@@ -29,20 +22,16 @@ http:
       tls: {}
 
     grafana:
-      rule: "Host(`192.168.20.189`) && PathPrefix(`/grafana`)"
+      rule: "Host(`grafana.homelab.lan`)"
       entryPoints:
         - websecure
-      middlewares:
-        - grafana-strip
       service: grafana
       tls: {}
 
     forgejo:
-      rule: "Host(`192.168.20.189`) && PathPrefix(`/git`)"
+      rule: "Host(`git.homelab.lan`)"
       entryPoints:
         - websecure
-      middlewares:
-        - git-strip
       service: forgejo
       tls: {}
 
