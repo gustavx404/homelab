@@ -26,6 +26,22 @@ services:
       timeout: 10s
       retries: 3
 
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    networks:
+      - backend
+    volumes:
+      - ../homepage:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - HOMEPAGE_HA_KEY=${HOMEPAGE_HA_KEY:-}
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    restart: unless-stopped
+
   forgejo:
     image: codeberg.org/forgejo/forgejo:16.0.2
     container_name: forgejo

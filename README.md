@@ -65,13 +65,14 @@ docker compose -f compose/compose.yaml up -d
 **DNS** — adicionar ao OpenWrt (LuCI → DHCP and DNS → Hosts) ou `/etc/hosts`:
 
 ```
-192.168.20.189 ha.home grafana.home git.home frigate.home photos.home
+192.168.20.189 home.home ha.home grafana.home git.home frigate.home photos.home
 ```
 
 **Acesso** — hostname-based routing, TLS auto-assinado.
 
 | hostname | servico |
 |----------|---------|
+| `home.home` | Homepage (dashboard) |
 | `ha.home` | Home Assistant |
 | `grafana.home` | Grafana |
 | `git.home` | Forgejo |
@@ -90,6 +91,7 @@ docker compose -f compose/compose.yaml up -d
 | home | esphome | `stable` | `6052` host |
 | security | suricata | `latest` | host |
 | security | crowdsec | `latest` | `8080` lapi |
+| services | homepage | `latest` | interno |
 | services | forgejo | `16.0.2` | `2222` ssh |
 | services | mumble | `latest` | `64738` tcp/udp |
 | services | kali | `rolling` | cli |

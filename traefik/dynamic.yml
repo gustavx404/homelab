@@ -59,6 +59,13 @@ http:
       service: immich
       tls: {}
 
+    homepage:
+      rule: "Host(`home.home`)"
+      entryPoints:
+        - websecure
+      service: homepage
+      tls: {}
+
   services:
     homeassistant:
       loadBalancer:
@@ -85,3 +92,8 @@ http:
       loadBalancer:
         servers:
           - url: "http://immich-server:2283"
+
+    homepage:
+      loadBalancer:
+        servers:
+          - url: "http://homepage:3000"

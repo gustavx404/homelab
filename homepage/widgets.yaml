@@ -1,0 +1,14 @@
+---
+# Homepage widgets
+
+- resources:
+    cpu: true
+    memory: true
+    disk: /
+    expanded: true
+
+- datetime:
+    text_size: xl
+    format:
+      timeStyle: short
+      hour12: false

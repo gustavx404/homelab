@@ -1,0 +1,93 @@
+---
+# Homepage — service cards
+
+- Automacao:
+    - Home Assistant:
+        icon: home-assistant.png
+        href: https://ha.home
+        description: Automacao residencial
+        server: docker
+        container: homeassistant
+        widget:
+          type: homeassistant
+          url: http://homeassistant:8123
+          key: "{{HOMEPAGE_HA_KEY}}"
+
+    - ESPHome:
+        icon: esphome.png
+        href: http://192.168.20.189:6052
+        description: Firmware ESP32
+        server: docker
+        container: esphome
+
+    - MariaDB:
+        icon: mariadb.png
+        href: null
+        description: Banco de dados do HA
+
+- Seguranca:
+    - Suricata:
+        icon: suricata.png
+        href: null
+        description: IDS/IPS — 12 assinaturas
+        server: docker
+        container: suricata
+
+    - CrowdSec:
+        icon: crowdsec.png
+        href: null
+        description: IPS — bloqueio na borda
+        server: docker
+        container: crowdsec
+
+- Servicos:
+    - Forgejo:
+        icon: forgejo.png
+        href: https://git.home
+        description: Git self-hosted
+        server: docker
+        container: forgejo
+
+    - Mumble:
+        icon: mumble.png
+        href: mumble://192.168.20.189:64738
+        description: VoIP — Ducks Server
+        server: docker
+        container: mumble
+
+    - Kali Linux:
+        icon: kali-linux.png
+        href: null
+        description: Pentest — CLI
+        server: docker
+        container: kali
+
+- Media:
+    - Frigate:
+        icon: frigate.png
+        href: https://frigate.home
+        description: NVR cameras
+        server: docker
+        container: frigate
+
+    - Immich:
+        icon: immich.png
+        href: https://photos.home
+        description: Fotos e videos
+        server: docker
+        container: immich-server
+
+- Monitoria:
+    - Grafana:
+        icon: grafana.png
+        href: https://grafana.home
+        description: Dashboards
+        server: docker
+        container: grafana
+
+    - Prometheus:
+        icon: prometheus.png
+        href: null
+        description: Metricas
+        server: docker
+        container: prometheus

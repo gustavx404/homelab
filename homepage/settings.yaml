@@ -1,0 +1,33 @@
+---
+# Homepage settings
+title: Homelab
+description: Infraestrutura auto-hospedada
+theme: dark
+color: slate
+
+headerStyle: clean
+layout:
+  Automacao:
+    style: row
+    columns: 3
+  Seguranca:
+    style: row
+    columns: 2
+  Servicos:
+    style: row
+    columns: 3
+  Media:
+    style: row
+    columns: 2
+  Monitoria:
+    style: row
+    columns: 2
+
+quicklaunch:
+  searchDescriptions: true
+  hideInternetSearch: false
+  hideVisitURL: false
+
+providers:
+  openweathermap: openweathermapapikey
+  weatherapi: weatherapiapikey
