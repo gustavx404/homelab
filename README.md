@@ -1,225 +1,212 @@
-# homelab
+<p align="center">
+  <img src="https://img.shields.io/github/actions/workflow/status/gustavx404/homelab/ci.yaml?branch=master&label=CI&style=flat-square" alt="CI">
+  <img src="https://img.shields.io/badge/services-11-blue?style=flat-square" alt="Services">
+  <img src="https://img.shields.io/badge/security-Suricata%208%20%2B%20CrowdSec-green?style=flat-square" alt="Security">
+  <img src="https://img.shields.io/badge/proxy-Traefik%20v3-blueviolet?style=flat-square" alt="Proxy">
+  <img src="https://img.shields.io/badge/secrets-SOPS%20%2B%20age-black?style=flat-square" alt="Secrets">
+</p>
 
-> Infraestrutura Dockerizada — 11 servicos, Suricata 8 + CrowdSec IPS, Traefik reverse proxy.
+<h1 align="center">homelab</h1>
 
-[![CI](https://github.com/gustavx404/homelab/actions/workflows/ci.yaml/badge.svg)](https://github.com/gustavx404/homelab/actions/workflows/ci.yaml)
+<p align="center">Self-hosted infrastructure — Docker Compose, modular stacks, zero-trust networking.</p>
 
 ---
 
-## Arquitetura
+### Architecture
 
 ```
-Internet
-   │
-   ▼ OpenWrt (borda — CrowdSec bouncer)
-   │
-   ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  Traefik :80/:443 (reverse proxy + TLS, path-based routing)      │
-│  / → Home Assistant   /grafana → Grafana   /git → Forgejo        │
-└──────────────────────────────────────────────────────────────────┘
-   │
-   ▼  backend (bridge br-homelab)
-┌──────────┬──────────┬──────────┬──────────┬──────────┐
-│ mariadb  │ grafana  │prometheus│ forgejo  │  mumble  │
-│ (HA DB)  │ (int)    │ (int)    │ (int)    │ :64738   │
-└──────────┴──────────┴──────────┴──────────┴──────────┘
-   │
-   ▼  host network (seguranca / dispositivos)
-┌──────────────┬──────────┬──────────────┐
-│  suricata 8  │ esphome  │  crowdsec    │
-│  + crowdsec  │ :6052    │  LAPI :8080  │
-└──────────────┴──────────┴──────────────┘
+  Internet ──► OpenWrt (borda + CrowdSec bouncer)
+                   │
+                   ▼  :80 :443
+              ┌─────────────┐
+              │   Traefik    │  reverse proxy + TLS
+              │  /           │  ──► Home Assistant
+              │  /grafana    │  ──► Grafana
+              │  /git        │  ──► Forgejo
+              └──────┬───────┘
+                     │  backend (br-homelab)
+       ┌─────────────┼─────────────┬──────────────┐
+       ▼             ▼             ▼              ▼
+   ┌───────┐   ┌──────────┐  ┌──────────┐  ┌─────────┐
+   │mariadb│   │ grafana  │  │prometheus│  │ forgejo │
+   │  :3306│   │  :3000   │  │  :9090   │  │ :2222   │
+   └───────┘   └──────────┘  └──────────┘  └─────────┘
+       │
+       ▼  host network
+   ┌──────────┬──────────┬──────────┐
+   │ suricata │ esphome  │ crowdsec │
+   │  IDS/IPS │  :6052   │  :8080   │
+   └──────────┴──────────┴──────────┘
 ```
 
----
+### Services
 
-## Stack
+<table>
+<tr>
+<td width="50%">
 
-| Servico | Imagem | Exposicao | Motivo |
-|---------|--------|-----------|--------|
-| **Traefik** | `traefik:v3.3` | `:80`, `:443` | Reverse proxy (unica entrada HTTP/S) |
-| **Home Assistant** | `home-assistant:stable` | interno | So via Traefik |
-| **MariaDB** | `mariadb:lts` | interno | Rede backend |
-| **ESPHome** | `esphome:stable` | `:6052` host | mDNS/device discovery |
-| **Suricata 8** | `jasonish/suricata:latest` | host | Captura de pacotes (eno1 + br-homelab) |
-| **CrowdSec** | `crowdsecurity/crowdsec:latest` | `:8080` LAN | LAPI para OpenWrt bouncer |
-| **Mumble** | `mumblevoip/mumble-server` | `:64738` TCP/UDP | Protocolo proprio (VoIP) |
-| **Forgejo** | `forgejo:16.0.2` | `:2222` (SSH) | Git SSH (web via Traefik) |
-| **Kali Linux** | `kalilinux/kali-rolling` | CLI | `docker exec -it kali bash` |
-| **Prometheus** | `prom/prometheus:v3.4.0` | `127.0.0.1:9090` | Metricas internas |
-| **Grafana** | `grafana/grafana:11.6.0` | `127.0.0.1:3000` | Via Traefik |
+#### Core
+| Service | Image | Access |
+|---------|-------|--------|
+| **Traefik** | `v3.3` | `:80` `:443` |
+| **Home Assistant** | `stable` | `/` (proxy) |
+| **MariaDB** | `lts` | `:3306` (internal) |
+| **ESPHome** | `stable` | `:6052` (host) |
 
----
+#### Security
+| Service | Image | Access |
+|---------|-------|--------|
+| **Suricata 8** | `latest` | host (eno1 + br-homelab) |
+| **CrowdSec** | `latest` | `:8080` (LAPI) |
 
-## Auditoria de portas expostas
+</td>
+<td width="50%">
 
-| Porta | Servico | Justificativa |
-|-------|---------|---------------|
-| `80, 443` | Traefik | Unico proxy de entrada |
-| `22` | Host SSH | Acesso administrativo |
-| `2222` | Forgejo SSH | Git push/pull |
-| `6052` | ESPHome | `network_mode: host` (mDNS) — dashboard com auth |
-| `64738` | Mumble | Protocolo VoIP proprio (TCP+UDP) |
-| `8080` | CrowdSec LAPI | API autenticada para OpenWrt bouncer |
+#### Apps
+| Service | Image | Access |
+|---------|-------|--------|
+| **Forgejo** | `16.0.2` | `/git` (web) `:2222` (SSH) |
+| **Mumble** | `latest` | `:64738` TCP+UDP |
+| **Kali** | `rolling` | `docker exec` CLI |
 
-**Nenhum app web exposto diretamente.** Tudo passa pelo Traefik.
+#### Monitoring
+| Service | Image | Access |
+|---------|-------|--------|
+| **Prometheus** | `v3.4.0` | `127.0.0.1:9090` |
+| **Grafana** | `11.6.0` | `/grafana` (proxy) |
 
----
+</td>
+</tr>
+</table>
 
-## Acesso
-
-Path-based routing — funciona com qualquer IP ou hostname, sem dependencia de DNS:
-
-| URL | Servico |
-|-----|---------|
-| `https://<host-ip>/` | Home Assistant |
-| `https://<host-ip>/grafana/` | Grafana |
-| `https://<host-ip>/git/` | Forgejo |
-
-Exemplo: `https://192.168.20.189/`, `https://192.168.20.189/grafana/`
-
-Certificado auto-assinado — aceitar no primeiro acesso.
-
----
-
-## Estrutura
-
-```
-compose/
-├── compose.yaml        # Master (include todos os stacks)
-├── network.yaml        # Redes + secrets compartilhados
-├── home.yaml           # mariadb, homeassistant, esphome
-├── security.yaml       # suricata, crowdsec
-├── monitoring.yaml     # prometheus, grafana
-├── services.yaml       # traefik, forgejo, mumble, kali
-├── .env.example        # Template de variaveis (fake)
-└── sops-secrets.yaml   # Secrets encriptados (SOPS + age)
-
-traefik/                # Reverse proxy (dynamic.yml + traefik.yml)
-suricata/               # IDS/IPS (yaml + regras custom)
-crowdsec/               # IPS (acquis, profiles, scenarios, whitelist)
-homeassistant/          # HA config template + ESPHome
-monitoring/             # Prometheus + Grafana
-scripts/                # decrypt-secrets, update-suricata-rules
-```
-
-### Stacks individuais
+### Quick Start
 
 ```bash
-# Tudo
-docker compose -f compose/compose.yaml up -d
-
-# So home
-docker compose -f compose/network.yaml -f compose/home.yaml up -d
-
-# So seguranca
-docker compose -f compose/network.yaml -f compose/security.yaml up -d
-```
-
----
-
-## Quick Start
-
-```bash
-# 1. Dependencias
+# 1. Dependencies
 sudo apt install -y docker.io docker-compose-v2 age yamllint
 curl -LO https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.linux.amd64
 sudo mv sops-v3.13.3.linux.amd64 /usr/local/bin/sops && sudo chmod +x /usr/local/bin/sops
 
-# 2. Gerar chave age
+# 2. Generate age key
 age-keygen -o ~/.config/sops/age/keys.txt
-# Copiar public key para .sops.yaml
+# Copy public key into .sops.yaml
 
-# 3. Editar secrets com valores reais
+# 3. Edit secrets
 sops compose/sops-secrets.yaml
 
-# 4. Gerar .env
+# 4. Generate .env
 bash scripts/decrypt-secrets.sh
 
-# 5. Subir
+# 5. Deploy
 docker compose -f compose/compose.yaml up -d
 ```
 
----
+### Access
 
-## Suricata 8 + CrowdSec IPS
+Path-based routing — works with any IP, zero DNS dependency:
 
-### Suricata (deteccao)
+| URL | Destination |
+|-----|-------------|
+| `https://<host>/` | Home Assistant |
+| `https://<host>/grafana/` | Grafana |
+| `https://<host>/git/` | Forgejo |
 
-12 regras ativas em `eno1` + `br-homelab`:
+> Self-signed certificate — accept on first visit.
 
-| SID | Tipo | Detecta |
-|-----|------|---------|
-| 1000010 | SYN scan | `nmap -sS` (5 pacotes em 3s) |
-| 1000011 | connect() scan | `nmap -sT` |
-| 1000012 | NULL scan | `nmap -sN` |
-| 1000013 | FIN scan | `nmap -sF` |
-| 1000014 | XMAS scan | `nmap -sX` |
-| 1000020 | Port scan | 10+ portas em 5s |
-| 1000030 | UDP scan | `nmap -sU` (exclui DNS) |
-| 1000040 | SSH brute force | 8+ novas conexoes em 30s |
-| 1000050 | Path traversal | `../` em HTTP |
-| 1000051 | SQL injection | `union select` em HTTP |
+### Stack Layout
 
-### CrowdSec (prevencao)
+```
+compose/
+├── compose.yaml          # master (includes all stacks)
+├── network.yaml          # shared network + secrets
+├── home.yaml             # mariadb, homeassistant, esphome
+├── security.yaml         # suricata, crowdsec
+├── monitoring.yaml       # prometheus, grafana
+├── services.yaml         # traefik, forgejo, mumble, kali
+├── .env.example          # template (fake values)
+└── sops-secrets.yaml     # encrypted secrets (SOPS + age)
 
-- Le `eve.json` do Suricata em tempo real
-- Scenario custom: 2 alerts em 60s = ban
-- OpenWrt bouncer aplica bloqueio na borda via nftables
-- Whitelist: localhost + gateway (192.168.20.1)
-
-```bash
-docker exec crowdsec cscli decisions list   # IPs banidos
-docker exec crowdsec cscli alerts list      # alertas recentes
+traefik/                  # dynamic.yml + traefik.yml
+suricata/                 # IDS/IPS config + 12 custom rules
+crowdsec/                 # IPS config (acquis, profiles, scenarios)
+homeassistant/            # HA config + ESPHome devices
+monitoring/               # Prometheus + Grafana configs
+scripts/                  # decrypt-secrets, update-suricata-rules
 ```
 
-### Testar
+Run individual stacks:
 
 ```bash
-docker exec kali nmap -sS -p 1-100 192.168.20.189
-docker exec suricata cat /var/log/suricata/fast.log | tail -5
-docker exec crowdsec cscli decisions list
+docker compose -f compose/network.yaml -f compose/security.yaml up -d   # security only
+docker compose -f compose/network.yaml -f compose/home.yaml up -d       # home only
 ```
 
----
+### IDS/IPS — Suricata 8 + CrowdSec
 
-## Seguranca
+**12 active rules** monitoring `eno1` + `br-homelab`:
 
-- **Zero portas web expostas** — tudo via Traefik
-- Grafana, Prometheus bind `127.0.0.1` (internos)
-- MariaDB so na rede `backend`
-- Secrets encriptados com SOPS + age (`.env` gitignored)
-- `network_mode: host` so onde necessario (Suricata, ESPHome)
-- `no-new-privileges:true` em containers com host network
-- Healthchecks + resource limits em todos os containers
-- CI Trivy scan em 7 imagens
+| Rule | Detects | Threshold |
+|------|---------|-----------|
+| `SYN scan` | `nmap -sS` | 5 pkts / 3s |
+| `connect() scan` | `nmap -sT` | 5 conns / 3s |
+| `NULL scan` | `nmap -sN` | 3 pkts / 10s |
+| `FIN scan` | `nmap -sF` | 3 pkts / 10s |
+| `XMAS scan` | `nmap -sX` | 3 pkts / 10s |
+| `Port scan` | aggressive probing | 10 ports / 5s |
+| `UDP scan` | `nmap -sU` (excl. DNS) | 5 pkts / 3s |
+| `SSH brute force` | repeated auth | 8 conns / 30s |
+| `Path traversal` | `../` in URL | — |
+| `SQL injection` | `union select` | — |
 
----
+**CrowdSec IPS** reads `eve.json` in real time — 2 alerts in 60s triggers a 6h ban propagated to OpenWrt at the edge.
 
-## Backup
+```bash
+docker exec crowdsec cscli decisions list     # active bans
+docker exec crowdsec cscli alerts list        # recent alerts
+docker exec kali nmap -sS -p 1-100 <host>    # test a scan
+```
+
+### Port Audit
+
+| Port | Service | Rationale |
+|------|---------|-----------|
+| `80,443` | Traefik | single HTTP/S entry point |
+| `22` | SSH | admin access |
+| `2222` | Forgejo SSH | git push/pull |
+| `6052` | ESPHome | host network (mDNS) — auth required |
+| `64738` | Mumble | native VoIP protocol |
+| `8080` | CrowdSec LAPI | authenticated API for OpenWrt bouncer |
+
+### Security
+
+- **Zero web ports exposed** — everything through Traefik
+- Grafana & Prometheus bind `127.0.0.1` only
+- MariaDB isolated on `backend` network
+- Secrets encrypted with SOPS + age (`.env` gitignored)
+- `network_mode: host` only where necessary (Suricata, ESPHome)
+- `no-new-privileges:true` on host-network containers
+- Healthchecks + resource limits on all 11 containers
+- CI Trivy vulnerability scan across all images
+
+### Backup
 
 ```bash
 tar -czf backup-$(date +%Y%m%d).tar.gz data/
-cp ~/.config/sops/age/keys.txt backup-age-key.txt  # CRITICO
+cp ~/.config/sops/age/keys.txt backup-age-key.txt   # critical — lose this, lose access to secrets
 ```
 
----
+### Credits
 
-## Creditos
+- [robgt978/Easun-SMG-II-11Kw-esphome](https://github.com/robgt978/Easun-SMG-II-11Kw-esphome-) — inverter integration
+- [OISF/Suricata](https://suricata.io/) — network IDS/IPS engine
+- [crowdsecurity/crowdsec](https://github.com/crowdsecurity/crowdsec) — behavior-based IPS
+- [mumblevoip/mumble-server](https://github.com/mumble-voip/mumble) — VoIP server
 
-- **EASUN SMG II 11Kw ESPHome** — [robgt978/easun-smg-ii-11kw-esphome](https://github.com/robgt978/Easun-SMG-II-11Kw-esphome-)
-- **Suricata** — [OISF/Suricata](https://suricata.io/)
-- **CrowdSec** — [crowdsecurity/crowdsec](https://github.com/crowdsecurity/crowdsec)
-- **Mumble** — [mumblevoip/mumble-server](https://github.com/mumble-voip/mumble)
+### CI/CD
 
----
-
-## CI/CD
-
-| Job | Funcao |
-|-----|--------|
-| `yamllint` | Valida YAML (compose/, homeassistant/, suricata/, monitoring/, crowdsec/, traefik/) |
+| Job | Purpose |
+|-----|---------|
+| `yamllint` | YAML syntax validation (compose, suricata, crowdsec, traefik) |
 | `compose-validate` | `docker compose config --quiet` |
-| `config-scan` | Trivy misconfiguration scan |
-| `image-scan` | Trivy CVE scan em 7 imagens (matrix) |
+| `config-scan` | Trivy misconfiguration check |
+| `image-scan` | Trivy CVE scan — 7 images (matrix) |
