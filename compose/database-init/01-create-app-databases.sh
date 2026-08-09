@@ -33,3 +33,8 @@ CREATE DATABASE IF NOT EXISTS crowdsec CHARACTER SET utf8mb4 COLLATE utf8mb4_uni
 CREATE USER IF NOT EXISTS 'crowdsec'@'%' IDENTIFIED BY '${CROWDSEC_DB_PASSWORD}';
 GRANT ALL PRIVILEGES ON crowdsec.* TO 'crowdsec'@'%';
 SQL
+
+# --- grafana ---
+mysql -u root -p"$MYSQL_PWD" -e "CREATE DATABASE IF NOT EXISTS grafana CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null
+mysql -u root -p"$MYSQL_PWD" -e "CREATE USER IF NOT EXISTS 'grafana'@'%' IDENTIFIED BY '${GRAFANA_DB_PASSWORD:-gf_db_pass_2026}';" 2>/dev/null
+mysql -u root -p"$MYSQL_PWD" -e "GRANT ALL PRIVILEGES ON grafana.* TO 'grafana'@'%'; FLUSH PRIVILEGES;" 2>/dev/null
