@@ -25,11 +25,16 @@ http:
       headers:
         customRequestHeaders:
           X-Ingress-Path: "/frigate"
+    # Frigate tem login proprio? Nao. Protecao obrigatoria (senha em sops-secrets.yaml, FRIGATE_AUTH_*)
+    frigate-auth:
+      basicAuth:
+        users:
+          - "frigate:$2y$05$2GuSh2p.RMAyL/LacCq.JejKc1gpT2reXvRYGib/qMlxtGgStkLc2"
 
   routers:
     # Grafana — higher priority, path-based
     grafana:
-      rule: "PathPrefix(`/grafana`)"
+      rule: "PathPrefix(`/grafana`) || PathPrefix(`/grafana/`)"
       priority: 10
       entryPoints:
         - websecure
@@ -40,7 +45,7 @@ http:
 
     # Forgejo — higher priority, path-based
     forgejo:
-      rule: "PathPrefix(`/git`)"
+      rule: "PathPrefix(`/git`) || PathPrefix(`/git/`)"
       priority: 10
       entryPoints:
         - websecure
@@ -49,15 +54,16 @@ http:
       service: forgejo
       tls: {}
 
-    # Frigate — path-based
+    # Frigate — path-based, autenticacao obrigatoria (sem login embutido)
     frigate:
-      rule: "PathPrefix(`/frigate`)"
+      rule: "PathPrefix(`/frigate`) || PathPrefix(`/frigate/`)"
       priority: 10
       entryPoints:
         - websecure
       middlewares:
         - frigate-strip
         - frigate-headers
+        - frigate-auth
       service: frigate
       tls: {}
 

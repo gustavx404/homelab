@@ -71,7 +71,7 @@ docker compose -f compose/compose.yaml up -d
 | `/git/` | Forgejo |
 | `/frigate/` | Frigate (NVR cameras) |
 
-> Immich (fotos) nao suporta subpath — acessar em `http://192.168.20.189:2283`.
+> Immich (fotos) nao suporta subpath — acessar em `http://<ip-do-host>:2283`.
 
 ---
 
@@ -179,14 +179,16 @@ docker exec kali nmap -sS -p 1-100 <host>     # teste
 | `8554` | frigate | RTSP restream |
 | `8555` | frigate | WebRTC tcp/udp |
 
-Frigate UI/API (8971) nao exposta — somente via Traefik em `/frigate` com autenticacao.
+Frigate UI/API (8971) nao exposta — somente via Traefik em `/frigate`, protegida por basicAuth (credencial em sops-secrets.yaml: FRIGATE_AUTH_USER/FRIGATE_AUTH_PASSWORD).
 
 ---
 
 ## Seguranca
 
 - todos os apps web acessiveis via Traefik (HA, Grafana, Forgejo, Frigate)
-- Immich na porta 2283 (excecao documentada — subpath nao suportado)
+- Immich na porta 2283 (excecao documentada — subpath nao suportado; tem login proprio)
+- Frigate exige basicAuth no `/frigate` (Frigate nao tem login embutido)
+- RTSP/WebRTC do Frigate (8554/8555) sem auth — restringir por firewall/allowlist
 - prometheus vinculado apenas a `127.0.0.1` (metricas internas)
 - mariadb isolado na rede `backend`
 - secrets encriptados com SOPS + age (`.env` gitignored)
