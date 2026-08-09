@@ -25,7 +25,7 @@ cameras:
     enabled: false
     ffmpeg:
       inputs:
-        - path: rtsp://usuario:{{ env_var('FRIGATE_RTSP_PASSWORD', 'senha') }}@192.168.20.100:554/stream1
+        - path: rtsp://usuario:{{ env_var('FRIGATE_RTSP_PASSWORD') }}@192.168.20.100:554/stream1
           roles:
             - detect
             - record
