@@ -14,12 +14,10 @@ Internet
    ▼ OpenWrt (borda — CrowdSec bouncer)
    │
    ▼
-┌────────────────────────────────────────────────────────┐
-│  Traefik :80/:443 (reverse proxy + TLS auto-assinado)  │
-│  ha.homelab.lan → Home Assistant                       │
-│  grafana.homelab.lan → Grafana                         │
-│  git.homelab.lan → Forgejo                             │
-└────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│  Traefik :80/:443 (reverse proxy + TLS, path-based routing)      │
+│  / → Home Assistant   /grafana → Grafana   /git → Forgejo        │
+└──────────────────────────────────────────────────────────────────┘
    │
    ▼  backend (bridge br-homelab)
 ┌──────────┬──────────┬──────────┬──────────┬──────────┐
@@ -69,19 +67,17 @@ Internet
 
 ---
 
-## Subdominios locais
+## Acesso
 
-Adicione ao `/etc/hosts` ou DNS do OpenWrt:
-
-```
-192.168.20.189 ha.homelab.lan grafana.homelab.lan git.homelab.lan
-```
+Path-based routing — funciona com qualquer IP ou hostname, sem dependencia de DNS:
 
 | URL | Servico |
 |-----|---------|
-| `https://ha.homelab.lan` | Home Assistant |
-| `https://grafana.homelab.lan` | Grafana |
-| `https://git.homelab.lan` | Forgejo |
+| `https://<host-ip>/` | Home Assistant |
+| `https://<host-ip>/grafana/` | Grafana |
+| `https://<host-ip>/git/` | Forgejo |
+
+Exemplo: `https://192.168.20.189/`, `https://192.168.20.189/grafana/`
 
 Certificado auto-assinado — aceitar no primeiro acesso.
 
