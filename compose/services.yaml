@@ -32,7 +32,6 @@ services:
     networks:
       - backend
     ports:
-      - "3001:3000"
       - "2222:22"
     volumes:
       - ../data/forgejo:/data
