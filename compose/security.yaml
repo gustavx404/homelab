@@ -43,7 +43,7 @@ services:
       - UID=1000
     volumes:
       - ../data/suricata:/var/log/suricata:ro
-      - ../data/crowdsec:/var/lib/crowdsec
+      - crowdsec_data:/var/lib/crowdsec
       - ../crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml:ro
       - ../crowdsec/profiles.yaml:/etc/crowdsec/profiles.yaml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -63,3 +63,6 @@ services:
       timeout: 15s
       retries: 3
       start_period: 30s
+
+volumes:
+  crowdsec_data:
