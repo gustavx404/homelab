@@ -73,17 +73,17 @@ docker compose -f compose/compose.yaml up -d
 
 | stack | servico | imagem | acesso |
 |-------|---------|--------|--------|
-| nucleo | traefik | `v3.3` | `80,443` |
-| nucleo | homeassistant | `stable` | interno |
-| nucleo | mariadb | `lts` | interno |
-| nucleo | esphome | `stable` | `6052` host |
-| seguranca | suricata | `latest` | host |
-| seguranca | crowdsec | `latest` | `8080` lapi |
-| apps | forgejo | `16.0.2` | `2222` ssh |
-| apps | mumble | `latest` | `64738` tcp/udp |
-| apps | kali | `rolling` | cli |
-| monitoria | prometheus | `v3.4.0` | `127.0.0.1:9090` |
-| monitoria | grafana | `11.6.0` | interno |
+| home | traefik | `v3.3` | `80,443` |
+| home | homeassistant | `stable` | interno |
+| home | mariadb | `lts` | interno |
+| home | esphome | `stable` | `6052` host |
+| security | suricata | `latest` | host |
+| security | crowdsec | `latest` | `8080` lapi |
+| services | forgejo | `16.0.2` | `2222` ssh |
+| services | mumble | `latest` | `64738` tcp/udp |
+| services | kali | `rolling` | cli |
+| monitoring | prometheus | `v3.4.0` | `127.0.0.1:9090` |
+| monitoring | grafana | `11.6.0` | interno |
 
 ---
 
