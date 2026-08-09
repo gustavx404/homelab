@@ -6,13 +6,22 @@ filters:
   - Alert.Remediation == true && Alert.GetScope() == "Ip"
 decisions:
   - type: ban
-    duration: 4h
+    duration: 6h
 on_success: break
 ---
-name: aggressive_scan
+name: scan_ban
 filters:
   - Alert.Remediation == true && Alert.GetScope() == "Ip" && Alert.GetScenario() contains "scan"
 decisions:
   - type: ban
     duration: 24h
+on_success: break
+---
+name: repeat_offender
+filters:
+  - Alert.Remediation == true && Alert.GetScope() == "Ip" && Alert.GetScenario() contains "scan"
+  - Alert.GetEventsCount() >= 3
+decisions:
+  - type: ban
+    duration: 48h
 on_success: break

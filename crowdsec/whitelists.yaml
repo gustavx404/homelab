@@ -1,10 +1,8 @@
 name: crowdsecurity/whitelists
-description: "Whitelist LAN, allow Docker container IPs to be banned"
+description: "Whitelist localhost and LAN gateway (router)"
 whitelist:
   reason: "private ipv4/ipv6 ip/ranges"
   ip: 
+    - "127.0.0.1"
     - "::1"
-  cidr:
-    - "127.0.0.0/8"
-    - "192.168.0.0/16"
-    - "10.0.0.0/8"
+    - "192.168.20.1"
