@@ -64,16 +64,34 @@ bash scripts/decrypt-secrets.sh
 docker compose -f compose/compose.yaml up -d
 ```
 
-**DNS** — adicionar ao OpenWrt (LuCI → DHCP and DNS → Hosts) ou `/etc/hosts`:
+**DNS** — o AdGuard Home (`compose/dns.yaml`) responde na porta 53 do host
+(`192.168.20.189:53`; upstream Quad9 via DoH, cache e filtro de anuncios).
+Para a LAN inteira usar o AdGuard como DNS, rode no roteador OpenWrt:
+
+```bash
+scp scripts/openwrt-dns-adguard.sh root@192.168.20.1:/tmp/
+ssh root@192.168.20.1 'sh /tmp/openwrt-dns-adguard.sh'
+```
+
+O script faz: dnsmasq encaminha tudo para `192.168.20.189#53` (`noresolv=1`) e o
+DHCP option 6 entrega `192.168.20.189` como DNS aos clientes (query log por
+cliente no AdGuard). Clientes com lease ativo so mudam ao renovar; force com
+`/etc/init.d/network restart` no roteador.
+
+> Com `noresolv=1`, se o AdGuard cair a LAN fica sem DNS — monitore o
+> healthcheck: `docker ps --filter name=adguard` (coluna STATUS).
+
+Hostnames no LuCI → DHCP and DNS → Hosts (ou `/etc/hosts`):
 
 ```
-192.168.20.189 home.home ha.home grafana.home git.home frigate.home photos.home vault.home ntfy.home
+192.168.20.189 adguard.home home.home ha.home grafana.home git.home frigate.home photos.home vault.home ntfy.home
 ```
 
 **Acesso** — hostname-based routing, TLS auto-assinado.
 
 | hostname | servico |
 |----------|---------|
+| `adguard.home` | AdGuard Home (DNS) |
 | `home.home` | Homepage (dashboard) |
 | `ha.home` | Home Assistant |
 | `grafana.home` | Grafana |
@@ -89,6 +107,7 @@ docker compose -f compose/compose.yaml up -d
 
 | stack | servico | imagem | acesso |
 |-------|---------|--------|--------|
+| dns | adguard | `adguard/adguardhome` | `53`, `3003` |
 | services | traefik | `v3.3` | `80,443` |
 | home | homeassistant | `stable` | interno |
 | database | mariadb | `lts` | interno |

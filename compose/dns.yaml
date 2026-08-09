@@ -1,5 +1,5 @@
 ---
-# DNS stack: AdGuard Home — recursive, fast, local domain rewriting
+# DNS stack: AdGuard Home — upstream Quad9 (DoH), filtro de anuncios na LAN
 
 services:
   adguard:
@@ -10,7 +10,7 @@ services:
     ports:
       - "53:53/tcp"
       - "53:53/udp"
-      - "3003:3000/tcp"       # web UI (inicial, depois via Traefik)
+      - "3003:80/tcp"       # web UI (wizard configura a porta 80; admin via adguard.home)
     volumes:
       - ../data/adguard/work:/opt/adguardhome/work
       - ../data/adguard/conf:/opt/adguardhome/conf
@@ -26,7 +26,8 @@ services:
           memory: 256M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3000/ || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:80/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 20s
