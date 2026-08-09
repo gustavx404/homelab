@@ -58,11 +58,6 @@
         description: IPS — bloqueio na borda
         server: docker
         container: crowdsec
-        widget:
-          type: crowdsec
-          url: http://crowdsec:8080
-          username: "{{HOMEPAGE_VAR_CROWDSEC_USERNAME}}"
-          password: "{{HOMEPAGE_VAR_CROWDSEC_PASSWORD}}"
 
 - Servicos:
     - Vaultwarden:
