@@ -39,12 +39,6 @@
         container: crowdsec
 
 - Servicos:
-    - Vaultwarden:
-        icon: vaultwarden.png
-        href: https://vault.home
-        description: Gerenciador de senhas
-        server: docker
-        container: vaultwarden
 
     - Forgejo:
         icon: forgejo.png
@@ -82,12 +76,6 @@
         server: docker
         container: frigate
 
-    - Immich:
-        icon: immich.png
-        href: https://photos.home
-        description: Fotos e videos
-        server: docker
-        container: immich-server
 
 - Monitoria:
     - Grafana:

@@ -1,5 +1,5 @@
 # Traefik dynamic configuration — hostname-based routing
-# DNS: 192.168.20.189 adguard.home ha.home grafana.home git.home frigate.home photos.home vault.home ntfy.home
+# DNS: 192.168.20.189 ha.home grafana.home git.home frigate.home home.home ntfy.home
 
 http:
   middlewares:
@@ -19,13 +19,6 @@ http:
           - "frigate:$2y$12$8qbhOjw2gna2jO31S9jvTulqUdzoQdgYWMjqe9lyI6dx9kKYAXMTe"
 
   routers:
-    adguard:
-      rule: "Host(`adguard.home`)"
-      entryPoints:
-        - websecure
-      service: adguard
-      tls: {}
-
     homeassistant:
       rule: "Host(`ha.home`)"
       entryPoints:
@@ -59,25 +52,11 @@ http:
       service: frigate
       tls: {}
 
-    immich:
-      rule: "Host(`photos.home`)"
-      entryPoints:
-        - websecure
-      service: immich
-      tls: {}
-
     homepage:
       rule: "Host(`home.home`)"
       entryPoints:
         - websecure
       service: homepage
-      tls: {}
-
-    vaultwarden:
-      rule: "Host(`vault.home`)"
-      entryPoints:
-        - websecure
-      service: vaultwarden
       tls: {}
 
     ntfy:
@@ -88,11 +67,6 @@ http:
       tls: {}
 
   services:
-    adguard:
-      loadBalancer:
-        servers:
-          - url: "http://adguard:80"
-
     homeassistant:
       loadBalancer:
         servers:
@@ -114,20 +88,10 @@ http:
         servers:
           - url: "http://frigate:8971"
 
-    immich:
-      loadBalancer:
-        servers:
-          - url: "http://immich-server:2283"
-
     homepage:
       loadBalancer:
         servers:
           - url: "http://homepage:3000"
-
-    vaultwarden:
-      loadBalancer:
-        servers:
-          - url: "http://vaultwarden:80"
 
     ntfy:
       loadBalancer:

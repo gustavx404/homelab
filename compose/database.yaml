@@ -21,7 +21,6 @@ services:
       # Senhas dos bancos das apps (compose/.env gerado pelo sops) —
       # usadas por compose/database-init/ para criar usuarios no primeiro boot.
       - FORGEJO_DB_PASSWORD=${FORGEJO_DB_PASSWORD:?FORGEJO_DB_PASSWORD required}
-      - VAULTWARDEN_DB_PASSWORD=${VAULTWARDEN_DB_PASSWORD:?VAULTWARDEN_DB_PASSWORD required}
       - CROWDSEC_DB_PASSWORD=${CROWDSEC_DB_PASSWORD:?CROWDSEC_DB_PASSWORD required}
       - GRAFANA_DB_PASSWORD=${GRAFANA_DB_PASSWORD:?GRAFANA_DB_PASSWORD required}
     secrets:

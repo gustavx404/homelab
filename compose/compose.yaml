@@ -6,11 +6,9 @@
 include:
   - network.yaml
   - database.yaml
-  - dns.yaml
   - home.yaml
   - security.yaml
   - monitoring.yaml
   - notify.yaml
   - media.yaml
   - services.yaml
-  - vaultwarden.yaml
