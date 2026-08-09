@@ -1,4 +1,5 @@
-# Traefik dynamic configuration
+# Traefik dynamic configuration — routers, services, middlewares
+# Access via: https://192.168.20.189/ (HA), /grafana, /git
 
 http:
   middlewares:
@@ -19,7 +20,7 @@ http:
 
   routers:
     homeassistant:
-      rule: "Host(`localhost`)"
+      rule: "Host(`192.168.20.189`)"
       entryPoints:
         - websecure
       middlewares:
@@ -28,7 +29,7 @@ http:
       tls: {}
 
     grafana:
-      rule: "Host(`localhost`) && PathPrefix(`/grafana`)"
+      rule: "Host(`192.168.20.189`) && PathPrefix(`/grafana`)"
       entryPoints:
         - websecure
       middlewares:
@@ -37,7 +38,7 @@ http:
       tls: {}
 
     forgejo:
-      rule: "Host(`localhost`) && PathPrefix(`/git`)"
+      rule: "Host(`192.168.20.189`) && PathPrefix(`/git`)"
       entryPoints:
         - websecure
       middlewares:
