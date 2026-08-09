@@ -253,6 +253,37 @@ URL `http://ntfy:80`, usuario/senha admin; adicione os topicos `alerts` e `home`
 
 ---
 
+## Dashboard (Homepage)
+
+Cards de status em `homepage/services.yaml` (rede `backend`, sem expor portas).
+
+Widgets ativos: Home Assistant, CrowdSec, Suricata (customapi), ntfy, Gitea
+(API do Forgejo), Frigate (`frigate:5000` — porta interna da API), Immich,
+Grafana (admin) e Prometheus. O card Traefik usa apenas status Docker
+(dashboard nao exposto).
+
+**Pendencias — chaves que ainda nao existem** (widgets aparecem com erro de
+auth ate serem criadas):
+
+```bash
+# 1. Immich (widget mostra fotos/usuarios):
+#    photos.home > Perfil > API Keys > New API Key (permissao: server.statistics)
+# 2. Forgejo (widget gitea mostra repos/issues/pulls):
+#    git.home > Settings > Applications > Generate New Token
+#    (permissao: read:notification, read:repository, read:issue)
+
+# 3. Guardar as chaves no SOPS e regenerar o .env:
+sops compose/sops-secrets.yaml          # preencher IMMICH_API_KEY e FORGEJO_TOKEN
+bash scripts/decrypt-secrets.sh
+docker compose -f compose/compose.yaml up -d homepage
+```
+
+> Segredos (HOMEPAGE_HA_KEY, CrowdSec, ntfy e Grafana admin) chegam ao
+> container via `HOMEPAGE_VAR_*` (ver `compose/services.yaml`) — mesmo padrao
+> usado pelos demais widgets; dashboard protegido por basicAuth no Traefik.
+
+---
+
 ## Backup
 
 ```bash
