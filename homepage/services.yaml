@@ -71,7 +71,7 @@
 
 - Servicos:
     - Vaultwarden:
-        icon: /icons/vaultwarden.svg
+        icon: vaultwarden.png
         href: https://vault.home
         description: Gerenciador de senhas
         server: docker
