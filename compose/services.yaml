@@ -1,25 +1,27 @@
 ---
-# Services stack: proxy, git, voip, pentest
+# Services stack: reverse proxy, git, voip, pentest
 
 services:
-  caddy:
-    image: caddy:2-alpine
-    container_name: caddy
+  traefik:
+    image: traefik:v3.3
+    container_name: traefik
     networks:
       - backend
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ../data/caddy:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ../traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ../data/traefik:/letsencrypt
     deploy:
       resources:
         limits:
           memory: 128M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pgrep caddy > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/ping || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

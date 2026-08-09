@@ -1,0 +1,55 @@
+# Traefik dynamic configuration
+
+http:
+  middlewares:
+    grafana-strip:
+      stripPrefix:
+        prefixes:
+          - "/grafana"
+    git-strip:
+      stripPrefix:
+        prefixes:
+          - "/git"
+
+  routers:
+    homeassistant:
+      rule: "Host(`localhost`)"
+      entryPoints:
+        - websecure
+      service: homeassistant
+      tls: {}
+
+    grafana:
+      rule: "Host(`localhost`) && PathPrefix(`/grafana`)"
+      entryPoints:
+        - websecure
+      middlewares:
+        - grafana-strip
+      service: grafana
+      tls: {}
+
+    forgejo:
+      rule: "Host(`localhost`) && PathPrefix(`/git`)"
+      entryPoints:
+        - websecure
+      middlewares:
+        - git-strip
+      service: forgejo
+      tls: {}
+
+  services:
+    homeassistant:
+      loadBalancer:
+        servers:
+          - url: "http://homeassistant:8123"
+        passHostHeader: true
+
+    grafana:
+      loadBalancer:
+        servers:
+          - url: "http://grafana:3000"
+
+    forgejo:
+      loadBalancer:
+        servers:
+          - url: "http://forgejo:3000"
