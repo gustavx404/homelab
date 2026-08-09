@@ -1,0 +1,32 @@
+---
+# DNS stack: AdGuard Home — recursive, fast, local domain rewriting
+
+services:
+  adguard:
+    image: adguard/adguardhome:latest
+    container_name: adguard
+    networks:
+      - backend
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "3003:3000/tcp"       # web UI (inicial, depois via Traefik)
+    volumes:
+      - ../data/adguard/work:/opt/adguardhome/work
+      - ../data/adguard/conf:/opt/adguardhome/conf
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

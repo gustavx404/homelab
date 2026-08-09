@@ -6,6 +6,7 @@
 include:
   - network.yaml
   - database.yaml
+  - dns.yaml
   - home.yaml
   - security.yaml
   - monitoring.yaml
