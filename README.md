@@ -1,42 +1,45 @@
 <p align="center">
-  <b>homelab</b> &nbsp;·&nbsp; self-hosted infrastructure &nbsp;·&nbsp; docker compose &nbsp;·&nbsp; 11 services
+  <br>
+  <samp>homelab</samp>
   <br><br>
-  <a href="https://github.com/gustavx404/homelab/actions"><img src="https://img.shields.io/github/actions/workflow/status/gustavx404/homelab/ci.yaml?style=flat-square&label=ci&color=10b981" alt="ci"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Suricata_8-IDS-10b981?style=flat-square" alt="suricata"></a>
-  <a href="#"><img src="https://img.shields.io/badge/CrowdSec-IPS-10b981?style=flat-square" alt="crowdsec"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Traefik-v3-10b981?style=flat-square" alt="traefik"></a>
-  <a href="#"><img src="https://img.shields.io/badge/secrets-SOPS_+_age-10b981?style=flat-square" alt="sops"></a>
+  Self-hosted infrastructure. Docker Compose. 11 services. Zero-trust networking.
+  <br><br>
+  <a href="https://github.com/gustavx404/homelab/actions"><img src="https://img.shields.io/badge/build-passing-10b981?style=flat-square" alt="build"></a>
+  <a href="#"><img src="https://img.shields.io/badge/suricata-8-6b7280?style=flat-square" alt="suricata"></a>
+  <a href="#"><img src="https://img.shields.io/badge/crowdsec-ips-6b7280?style=flat-square" alt="crowdsec"></a>
+  <a href="#"><img src="https://img.shields.io/badge/secrets-sops-6b7280?style=flat-square" alt="sops"></a>
+  <br><br>
 </p>
 
 ---
 
 ```
-                           INTERNET
-                              │
-                         ┌────┴────┐
-                         │ OpenWrt │  edge · CrowdSec bouncer
-                         └────┬────┘
-                              │  :80 :443
-                         ┌────┴──────────────┐
-                         │     TRAEFIK v3     │  reverse proxy · TLS
-                         │  /       → HA      │
-                         │  /grafana → Grafana│
-                         │  /git    → Forgejo │
-                         └────────┬───────────┘
-                                  │  backend (br-homelab)
-               ┌────────┬─────────┼────────┬─────────┐
-               ▼        ▼         ▼        ▼         ▼
-          ┌────────┐┌────────┐┌────────┐┌────────┐┌────────┐
-          │mariadb ││grafana ││prometh ││forgejo ││ mumble │
-          │ :3306  ││ :3000  ││ :9090  ││ :2222  ││ :64738 │
-          └────────┘└────────┘└────────┘└────────┘└────────┘
-                                             │
-               ┌─────────────┬───────────────┤
-               ▼             ▼               ▼
-          ┌────────┐   ┌──────────┐   ┌──────────┐
-          │suricata│   │ esphome  │   │ crowdsec │
-          │ host   │   │ :6052    │   │ :8080    │
-          └────────┘   └──────────┘   └──────────┘
+                          Internet
+                             │
+                        ┌────┴────┐
+                        │ OpenWrt │  edge router + CrowdSec bouncer
+                        └────┬────┘
+                             │  80 · 443
+                        ┌────┴──────────────┐
+                        │     Traefik v3     │  reverse proxy
+                        │                    │
+                        │  /          HA     │
+                        │  /grafana   Grafana│
+                        │  /git       Forgejo│
+                        └────────┬───────────┘
+                                 │  backend network
+              ┌────────┬─────────┼────────┬─────────┐
+              ▼        ▼         ▼        ▼         ▼
+          ┌───────┐┌───────┐┌────────┐┌───────┐┌───────┐
+          │mariadb││grafana││prometh.││forgejo││mumble │
+          └───────┘└───────┘└────────┘└───────┘└───────┘
+                                            │
+              ┌─────────────┬───────────────┤
+              ▼             ▼               ▼
+         ┌────────┐   ┌──────────┐   ┌──────────┐
+         │suricata│   │ esphome  │   │ crowdsec │
+         │  host  │   │  host    │   │  lapi    │
+         └────────┘   └──────────┘   └──────────┘
 ```
 
 ---
@@ -44,43 +47,49 @@
 ### Quick Start
 
 ```bash
-# 1. dependencies
+# dependencies
 sudo apt install -y docker.io docker-compose-v2 age yamllint
 curl -LO https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.linux.amd64
 sudo mv sops-v3.13.3.linux.amd64 /usr/local/bin/sops && sudo chmod +x /usr/local/bin/sops
 
-# 2. age key
-age-keygen -o ~/.config/sops/age/keys.txt       # copy public key → .sops.yaml
+# age key → copy public key into .sops.yaml
+age-keygen -o ~/.config/sops/age/keys.txt
 
-# 3. secrets
-sops compose/sops-secrets.yaml                   # edit with real values
+# edit secrets with real values
+sops compose/sops-secrets.yaml
 
-# 4. env
-bash scripts/decrypt-secrets.sh                  # generate compose/.env
+# generate .env from encrypted secrets
+bash scripts/decrypt-secrets.sh
 
-# 5. deploy
+# deploy everything
 docker compose -f compose/compose.yaml up -d
 ```
 
-**Access:** `https://<host>/` → HA · `https://<host>/grafana/` → Grafana · `https://<host>/git/` → Forgejo *(self-signed TLS – accept once)*
+Access via any IP — path-based routing, no DNS needed.
+
+| path | service |
+|------|---------|
+| `/` | Home Assistant |
+| `/grafana/` | Grafana |
+| `/git/` | Forgejo |
 
 ---
 
 ### Services
 
-| stack | service | image | access |
-|-------|---------|-------|--------|
-| core | **traefik** | `v3.3` | `:80` `:443` — single http/s gateway |
-| core | **homeassistant** | `stable` | `/` via traefik — home automation |
-| core | **mariadb** | `lts` | internal — HA recorder database |
-| core | **esphome** | `stable` | `:6052` host — esp32 firmware · mDNS |
-| security | **suricata** | `latest` _(8.0)_ | host — 12 rules · `eno1` + `br-homelab` |
-| security | **crowdsec** | `latest` | `:8080` lapi — IPS · openwrt bouncer |
-| apps | **forgejo** | `16.0.2` | `/git` (web) `:2222` (ssh) — git server |
-| apps | **mumble** | `latest` | `:64738` tcp/udp — ducks voip server |
-| apps | **kali** | `rolling` | `docker exec -it kali bash` — pentest |
-| monitoring | **prometheus** | `v3.4.0` | `127.0.0.1:9090` — metrics |
-| monitoring | **grafana** | `11.6.0` | `/grafana` via traefik — dashboards |
+| stack | service | image | port |
+|-------|---------|-------|------|
+| core | traefik | `v3.3` | `80,443` |
+| core | homeassistant | `stable` | internal |
+| core | mariadb | `lts` | internal |
+| core | esphome | `stable` | `6052` host |
+| security | suricata | `latest` | host |
+| security | crowdsec | `latest` | `8080` lapi |
+| apps | forgejo | `16.0.2` | `2222` ssh |
+| apps | mumble | `latest` | `64738` tcp/udp |
+| apps | kali | `rolling` | cli |
+| monitoring | prometheus | `v3.4.0` | `127.0.0.1:9090` |
+| monitoring | grafana | `11.6.0` | internal |
 
 ---
 
@@ -88,78 +97,70 @@ docker compose -f compose/compose.yaml up -d
 
 ```
 compose/
-├── compose.yaml         # master (includes all stacks)
-├── network.yaml         # bridge br-homelab + secrets
-├── home.yaml            # mariadb · homeassistant · esphome
-├── security.yaml        # suricata · crowdsec
-├── monitoring.yaml      # prometheus · grafana
-├── services.yaml        # traefik · forgejo · mumble · kali
-├── .env.example         # template (fake values)
-└── sops-secrets.yaml    # encrypted (SOPS + age)
+├── compose.yaml        master (include all)
+├── network.yaml        bridge + secrets
+├── home.yaml           mariadb · ha · esphome
+├── security.yaml       suricata · crowdsec
+├── monitoring.yaml     prometheus · grafana
+├── services.yaml       traefik · forgejo · mumble · kali
+├── .env.example        template
+└── sops-secrets.yaml   encrypted
 
-traefik/     dynamic.yml + traefik.yml
-suricata/    12 custom IDS signatures
-crowdsec/    acquis · profiles · scenarios · whitelist
-scripts/     decrypt-secrets · update-suricata-rules
+traefik/                dynamic.yml
+suricata/               12 IDS signatures
+crowdsec/               acquis · profiles · scenarios
+scripts/                decrypt · update-rules
 ```
 
 ```bash
-# individual stacks
-docker compose -f compose/network.yaml -f compose/security.yaml up -d    # security only
-docker compose -f compose/network.yaml -f compose/home.yaml up -d        # home only
-docker compose -f compose/network.yaml -f compose/services.yaml up -d    # apps only
+docker compose -f compose/network.yaml -f compose/security.yaml up -d
+docker compose -f compose/network.yaml -f compose/home.yaml up -d
 ```
 
 ---
 
-### IDS/IPS
+### IDS / IPS
 
-**Suricata** 12 signatures — 2 alerts in 60s = **CrowdSec** auto-ban → **OpenWrt** blocks at edge.
+Suricata monitors `eno1` + `br-homelab`. CrowdSec reads `eve.json` in real time. 2 alerts in 60 seconds triggers a 6-hour ban propagated to OpenWrt at the network edge.
 
-| sid | signature | threshold |
-|-----|-----------|-----------|
-| `1000010` | syn scan | 5/3s |
-| `1000011` | connect scan | 5/3s |
-| `1000012` | null scan | 3/10s |
-| `1000013` | fin scan | 3/10s |
-| `1000014` | xmas scan | 3/10s |
-| `1000020` | port scan | 10/5s |
-| `1000030` | udp scan | 5/3s |
-| `1000040` | ssh brute force | 8/30s |
-| `1000050` | path traversal | — |
-| `1000051` | sql injection | — |
+| signature | threshold |
+|-----------|-----------|
+| syn scan | 5 / 3s |
+| connect scan | 5 / 3s |
+| null scan | 3 / 10s |
+| fin scan | 3 / 10s |
+| xmas scan | 3 / 10s |
+| port scan | 10 / 5s |
+| udp scan | 5 / 3s |
+| ssh brute force | 8 / 30s |
+| path traversal | — |
+| sql injection | — |
 
 ```bash
-docker exec crowdsec cscli decisions list      # active bans
-docker exec kali nmap -sS -p 1-100 <host>     # test trigger
+docker exec crowdsec cscli decisions list
+docker exec kali nmap -sS -p 1-100 <host>
 ```
 
 ---
 
-### Exposed ports
+### Exposed Ports
 
-| port | service | rationale |
-|------|---------|-----------|
-| `22` | ssh | admin |
-| `80,443` | traefik | http/s gateway |
-| `2222` | forgejo ssh | git |
+| port | service | reason |
+|------|---------|--------|
+| `22` | ssh | admin access |
+| `80,443` | traefik | single http/s entry point |
+| `2222` | forgejo ssh | git push/pull |
 | `6052` | esphome | host network · mDNS |
 | `64738` | mumble | voip protocol |
-| `8080` | crowdsec lapi | openwrt bouncer |
+| `8080` | crowdsec lapi | openwrt bouncer api |
 
-> Zero web apps exposed directly. All http/s through Traefik.
+Zero web apps exposed directly. Everything through Traefik.
 
 ---
 
 ### Security
 
-▸ grafana & prometheus bind `127.0.0.1` only  
-▸ mariadb isolated on `backend` network  
-▸ SOPS + age encryption · `.env` gitignored  
-▸ `network_mode: host` only where necessary  
-▸ `no-new-privileges:true` on host-network containers  
-▸ healthchecks + resource limits on all containers  
-▸ CI: yamllint · compose-validate · trivy config · trivy cve (7 images)
+grafana & prometheus bind `127.0.0.1` only · mariadb isolated on `backend` network · SOPS + age encryption · `.env` gitignored · `network_mode: host` only where necessary · `no-new-privileges:true` on host containers · healthchecks + resource limits on all 11 containers · CI yamllint + compose-validate + trivy config + trivy cve
 
 ---
 
@@ -172,11 +173,11 @@ cp ~/.config/sops/age/keys.txt backup-age-key.txt
 
 ---
 
-<div align="center">
-
-[robgt978/Easun-SMG-II-11Kw-esphome](https://github.com/robgt978/Easun-SMG-II-11Kw-esphome-) ·
-[OISF/Suricata](https://suricata.io) ·
-[crowdsec](https://github.com/crowdsecurity/crowdsec) ·
-[mumble](https://github.com/mumble-voip/mumble)
-
-</div>
+<p align="center">
+  <sub>
+    <a href="https://github.com/robgt978/Easun-SMG-II-11Kw-esphome-">EASUN ESPHome</a> ·
+    <a href="https://suricata.io">Suricata</a> ·
+    <a href="https://github.com/crowdsecurity/crowdsec">CrowdSec</a> ·
+    <a href="https://github.com/mumble-voip/mumble">Mumble</a>
+  </sub>
+</p>

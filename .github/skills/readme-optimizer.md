@@ -1,54 +1,61 @@
-# README Optimization Skill
+# README Optimization Skill — Apple Design System
 
 ## Principles
 
-1. **Above the fold** — Title, one-liner, badges, architecture diagram visible without scrolling.
-2. **Scan-first** — Tables over walls of text. Anyone should grasp the project in 10 seconds.
-3. **Console aesthetic** — Section headers use terminal-style prompts (`$`, `#`, `▸`). Consistent visual language.
-4. **Progressive disclosure** — Quick start first, details later. Don't bury the `docker compose up -d`.
-5. **Mobile-friendly** — ASCII art under 80 chars wide. Tables collapse gracefully. No horizontal scroll.
-6. **Badge discipline** — Max 5 badges. Show what matters: CI status, stack highlights.
-7. **Single source of truth** — Don't repeat information. Each fact lives in exactly one place.
-8. **Whitespace is design** — Section breaks, indentation, spacing tell the eye where to look.
-9. **Command copy-paste** — Every code block should be runnable as-is. No placeholders that need editing.
-10. **Consistent terminology** — Pick one name per concept and use it everywhere.
+1. **Typography-first** — Clean hierarchy. One `h1` hero title, `h2` sections, `h3` never. Generous line-height via whitespace.
+2. **Whitespace is the interface** — Every section separated by `---`. Content breathes. No cramming.
+3. **Minimalist badges** — Small, flat, monochrome. No rainbow. Max 4.
+4. **Hero section** — Title, one-line description, badges. Nothing else above the fold except architecture diagram.
+5. **Card mentality** — Tables ARE cards. Clean borders, consistent padding via markdown formatting. Group related items visually.
+6. **San Francisco aesthetic** — Clean prose. No emoji. No terminal prompts (`$`, `#`). No ASCII art blocks. Architecture diagram is the only ASCII permitted and must be under 80 chars.
+7. **Progressive disclosure** — Quick start first. Details spiral outward. Don't explain what the table already shows.
+8. **Consistent capitalization** — Title Case for headings. lower case for table values. Sentence case for descriptions.
+9. **Single source of truth** — Every fact appears once. Tables replace paragraphs. Links replace inline config.
+10. **Mobile-first** — Everything under 80 characters wide. Tables max 4 columns. No horizontal scroll ever.
 
 ## Structure
 
 ```
-1. Title + badges (centered)
+Hero (centered)
+  title
+  one-line description
+  badges (max 4)
 
-2. Architecture diagram (ASCII, < 80 cols)
+Architecture diagram (ASCII, compact, < 80 cols)
 
-3. Quick start (numbered, runnable commands)
+Quick Start (numbered, runnable as-is)
 
-4. Services table (name, image, port, description)
+Services (single unified table)
+  stack | service | image | access
 
-5. Access URLs (path-based routing)
+File tree (minimal, grouped)
 
-6. File tree (terminal-style)
+Features (IDS rules, security — terse tables)
 
-7. Features / highlights (IDS rules, security, etc.)
+Ports (what's exposed + why — 3 columns)
 
-8. Port audit (what's exposed and why)
+Stack management (code block)
 
-9. Stack management commands
+Credits (compact, one line)
+```
 
-10. Credits (compact, links only)
+## Color palette
+
+```
+Primary:   #10b981 (green)
+Secondary: #6b7280 (gray)
+Badges:    flat square, single color
+Tables:    clean borders, no zebra striping
 ```
 
 ## Anti-patterns
 
-- Complex figlet/ASCII that's hard to read
-- Tables with too many columns (max 5)
-- Code blocks with `$` prefix AND `bash` language tag (pick one)
-- Duplicate service descriptions (table AND paragraph)
-- Walls of YAML inline (link to files instead)
-- Emoji overload (max 0)
-
-## Color palette
-
-- Badges: `#10b981` (green) for success/active status
-- Section headers: bold + `▸` prefix
-- Code blocks: `bash` or `yaml` language tags
-- Tables: left-aligned, minimal borders
+- Figlet or complex ASCII art
+- Emoji anywhere
+- Terminal `$` or `#` prompts
+- Code blocks that aren't runnable
+- Walls of text that duplicate table data
+- More than 4 badges
+- Tables with > 4 columns
+- Links without context
+- Mixed formatting styles in the same section
