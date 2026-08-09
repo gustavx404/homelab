@@ -8,7 +8,7 @@ mqtt:
 detectors:
   cpu:
     type: cpu
-    num_threads: 3
+    num_threads: 2  # host com 4 cores compartilhados (15+ servicos)
 
 objects:
   track:
@@ -21,11 +21,15 @@ cameras:
   camera1:
     # Habilite (enabled: true) ao configurar uma câmera real.
     # Path RTSP de exemplo — ajuste IP e credenciais.
-    # A senha vem de FRIGATE_RTSP_PASSWORD (compose/.env), sem credencial em texto puro.
+    # Com a camera habilitada, use {FRIGATE_RTSP_PASSWORD} (str.format) para a senha,
+    # definida em compose/.env (sops) — sem credencial em texto puro.
+    # Nao use {{ env_var(...) }} (legado): a validacao roda 2x e quebra o boot.
+    # Aqui (camera desabilitada) o literal 'SENHA' evita dependencia de env na subida:
+    # o s6 descarta vars vazias e {VAR} lancaria KeyError.
     enabled: false
     ffmpeg:
       inputs:
-        - path: rtsp://usuario:{{ env_var('FRIGATE_RTSP_PASSWORD') }}@192.168.20.100:554/stream1
+        - path: rtsp://usuario:SENHA@192.168.20.100:554/stream1
           roles:
             - detect
             - record
