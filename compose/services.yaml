@@ -63,7 +63,11 @@ services:
       - ../data/forgejo:/data
       - /etc/localtime:/etc/localtime:ro
     environment:
-      - FORGEJO__database__DB_TYPE=sqlite3
+      - FORGEJO__database__DB_TYPE=mysql
+      - FORGEJO__database__HOST=mariadb:3306
+      - FORGEJO__database__NAME=forgejo
+      - FORGEJO__database__USER=forgejo
+      - FORGEJO__database__PASSWD=${FORGEJO_DB_PASSWORD:-fj_db_pass_2026}
       - FORGEJO__server__ROOT_URL=https://git.home/
       - FORGEJO__metrics__ENABLED=true
     deploy:

@@ -19,7 +19,7 @@
     - MariaDB:
         icon: mariadb.png
         href: null
-        description: Banco de dados do HA
+        description: Banco central — HA · Vaultwarden · Forgejo · CrowdSec
         server: docker
         container: mariadb
 
