@@ -48,6 +48,7 @@ services:
       - crowdsec_data:/var/lib/crowdsec
       - ../crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml:ro
       - ../crowdsec/profiles.yaml:/etc/crowdsec/profiles.yaml:ro
+      - ../crowdsec/whitelists.yaml:/etc/crowdsec/parsers/s02-enrich/whitelists.yaml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     security_opt:
       - no-new-privileges:true
