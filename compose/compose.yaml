@@ -1,7 +1,7 @@
 ---
 # Master compose — loads all stacks
 # Individual stacks: compose/home.yaml compose/security.yaml compose/monitoring.yaml compose/services.yaml
-# Use: docker compose $(ls compose/*.yaml | sort | xargs -I{} echo -n "-f {} ") up -d
+# Use: docker compose -f compose/compose.yaml up -d  (include carrega todos os stacks)
 
 include:
   - network.yaml

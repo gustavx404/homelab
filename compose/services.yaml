@@ -65,6 +65,7 @@ services:
     environment:
       - FORGEJO__database__DB_TYPE=sqlite3
       - FORGEJO__server__ROOT_URL=https://git.home/
+      - FORGEJO__metrics__ENABLED=true
     deploy:
       resources:
         limits:

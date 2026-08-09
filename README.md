@@ -172,16 +172,34 @@ O dashboard (Homepage) mostra stats em tempo real do Suricata via `suricata-stat
 docker compose -f compose/network.yaml -f compose/security.yaml up -d --force-recreate suricata
 ```
 
-Perfis CrowdSec — cenario `homelab/scan-detection`:
+Perfis CrowdSec — cenario `homelab/scan-detection` (ordem importa: o mais
+especifico vem primeiro, `on_success: break`):
 
 | gatilho | duracao |
 |---------|---------|
-| primeira deteccao | 6 h |
+| reincidente (>=3 eventos) | 48 h |
 | padrao de scan | 24 h |
-| reincidente (>=3) | 48 h |
+| primeira deteccao | 6 h |
+
+**Whitelist RFC1918**: `crowdsec/whitelists.yaml` branqueia `127.0.0.1`, a LAN
+(`192.168.20.0/24`) e as redes Docker (`172.16.0.0/12`, `10.0.0.0/8`) — trafego
+interno nunca gera ban (so protecao da borda via OpenWrt). Apos editar
+`crowdsec/whitelists.yaml`, `profiles.yaml` ou `scenarios/`, recrie o container:
 
 ```bash
-docker exec crowdsec cscli decisions list      # bans ativos
+docker compose -f compose/compose.yaml up -d --force-recreate crowdsec
+```
+
+**Community blocklist (CAPI)**: habilitado com
+`docker exec crowdsec cscli console enable console_management` — as decisoes da
+comunidade (`ssh:bruteforce` etc.) aparecem em `cscli decisions list` com origem
+`CAPI` e o OpenWrt as aplica na borda. Para o bouncer do OpenWrt puxar a
+blocklist, ele precisa pedir `community_pull=true` no stream (config do bouncer
+no roteador; hoje esta `false`).
+
+```bash
+docker exec crowdsec cscli decisions list      # bans ativos (origem CAPI/local)
+docker exec crowdsec cscli console status      # estado do console (blocklist)
 docker exec kali nmap -sS -p 1-100 <host>     # teste
 ```
 

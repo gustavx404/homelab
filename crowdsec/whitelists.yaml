@@ -1,8 +1,11 @@
 name: crowdsecurity/whitelists
-description: "Whitelist localhost and LAN gateway (router)"
+description: "Whitelist localhost, LAN and Docker bridge (RFC1918)"
 whitelist:
   reason: "private ipv4/ipv6 ip/ranges"
   ip:
     - "127.0.0.1"
     - "::1"
-    - "192.168.20.1"
+  cidr:
+    - "192.168.20.0/24"
+    - "172.16.0.0/12"
+    - "10.0.0.0/8"

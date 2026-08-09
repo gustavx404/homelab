@@ -1,10 +1,10 @@
 # Homelab custom scenario — low threshold for scan detection
-# Triggers on 2 scan alerts from same source in 60s
+# Triggers on 3 scan alerts from same source in 60s
 type: leaky
-capacity: 2
+capacity: 3
 leakspeed: 60s
 name: homelab/scan-detection
-description: "Detect port scans with low threshold (2 alerts in 60s)"
+description: "Detect port scans with low threshold (3 alerts in 60s)"
 filter: "evt.Meta.log_type == 'suricata_alert' && evt.Meta.suricata_rule_severity == '2'"
 groupby: evt.Meta.source_ip
 blackhole: 5m
