@@ -1,1 +1,30 @@
-[]
+# Scripts do Home Assistant
+# Uso em automacoes: action: script.notify_alert / script.notify_home
+
+- id: notify_alert
+  alias: "Notificar topico alerts"
+  fields:
+    message:
+      description: "Mensagem a enviar"
+      example: "Algo importante aconteceu"
+  sequence:
+    - action: notify.send_message
+      target:
+        entity_id: notify.alerts
+      data:
+        title: "Homelab"
+        message: "{{ message }}"
+
+- id: notify_home
+  alias: "Notificar topico home"
+  fields:
+    message:
+      description: "Mensagem a enviar"
+      example: "Movimento detectado"
+  sequence:
+    - action: notify.send_message
+      target:
+        entity_id: notify.home
+      data:
+        title: "Casa"
+        message: "{{ message }}"

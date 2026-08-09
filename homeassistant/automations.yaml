@@ -1,1 +1,47 @@
-[]
+# Automations do Home Assistant
+# ============================================================================
+# Notificacoes via ntfy (integração "ntfy" — Settings > Devices & services > Add > ntfy):
+#   1. URL do servidor: http://ntfy:80 (interno, sem TLS)
+#   2. Usuario/senha: admin (criado em: docker exec ntfy ntfy user add --role=admin admin)
+#   3. Topics: adicione "alerts" e "home" -> entidades notify.alerts e notify.home
+# App no celular: instale o ntfy app, aponte para https://ntfy.home e faca login.
+# ============================================================================
+
+- id: frigate_person_alert
+  alias: "Frigate: pessoa detectada (alerta)"
+  triggers:
+    - trigger: event
+      event_type: frigate/events
+      event_data:
+        type: new
+        label: person
+  conditions:
+    # Ajuste para os nomes das suas cameras (frigate/config.yml)
+    - condition: template
+      value_template: "{{ trigger.event.data.after.camera in ['front_gate', 'back_yard'] }}"
+  actions:
+    - action: notify.send_message
+      target:
+        entity_id: notify.alerts
+      data:
+        title: "Seguranca"
+        message: "Pessoa detectada em {{ trigger.event.data.after.camera }}"
+
+- id: frigate_motion_home
+  alias: "Frigate: movimento registrado (informativo)"
+  triggers:
+    - trigger: event
+      event_type: frigate/events
+      event_data:
+        type: new
+        label: motion
+  conditions:
+    - condition: template
+      value_template: "{{ trigger.event.data.after.camera in ['front_gate', 'back_yard'] }}"
+  actions:
+    - action: notify.send_message
+      target:
+        entity_id: notify.home
+      data:
+        title: "Camera"
+        message: "Movimento em {{ trigger.event.data.after.camera }}"

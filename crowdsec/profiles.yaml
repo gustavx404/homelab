@@ -7,6 +7,8 @@ filters:
 decisions:
   - type: ban
     duration: 6h
+notifications:
+  - ntfy_alerts
 on_success: break
 ---
 name: scan_ban
@@ -15,6 +17,8 @@ filters:
 decisions:
   - type: ban
     duration: 24h
+notifications:
+  - ntfy_alerts
 on_success: break
 ---
 name: repeat_offender
@@ -24,4 +28,6 @@ filters:
 decisions:
   - type: ban
     duration: 48h
+notifications:
+  - ntfy_alerts
 on_success: break

@@ -3,7 +3,7 @@
 Infraestrutura auto-hospedada — Docker Compose, 17 servicos, rede zero-confianca.
 
 [![CI](https://github.com/gustavx404/homelab/actions/workflows/ci.yaml/badge.svg)](https://github.com/gustavx404/homelab/actions)
-[![servicos](https://img.shields.io/badge/servicos-17-3b82f6?style=flat-square)]()
+[![servicos](https://img.shields.io/badge/servicos-18-3b82f6?style=flat-square)]()
 [![suricata](https://img.shields.io/badge/suricata-8-6b7280?style=flat-square)]()
 [![secrets](https://img.shields.io/badge/secrets-sops%2Bage-6b7280?style=flat-square)]()
 
@@ -67,7 +67,7 @@ docker compose -f compose/compose.yaml up -d
 **DNS** — adicionar ao OpenWrt (LuCI → DHCP and DNS → Hosts) ou `/etc/hosts`:
 
 ```
-192.168.20.189 home.home ha.home grafana.home git.home frigate.home photos.home vault.home
+192.168.20.189 home.home ha.home grafana.home git.home frigate.home photos.home vault.home ntfy.home
 ```
 
 **Acesso** — hostname-based routing, TLS auto-assinado.
@@ -81,6 +81,7 @@ docker compose -f compose/compose.yaml up -d
 | `frigate.home` | Frigate (NVR) |
 | `photos.home` | Immich (fotos) |
 | `vault.home` | Vaultwarden (senhas) |
+| `ntfy.home` | ntfy (notificacoes push) |
 
 ---
 
@@ -100,6 +101,7 @@ docker compose -f compose/compose.yaml up -d
 | services | mumble | `latest` | `64738` tcp/udp |
 | services | kali | `rolling` | cli |
 | services | vaultwarden | `docker.io/vaultwarden/server:latest` | interno |
+| notify | ntfy | `binwiederhier/ntfy:latest` | interno |
 | monitoring | prometheus | `v3.4.0` | `127.0.0.1:9090` |
 | monitoring | grafana | `11.6.0` | interno |
 | media | frigate | `stable` | interno |
@@ -122,16 +124,17 @@ compose/
 ├── media.yaml          frigate · immich (server/ml/redis/postgres)
 ├── services.yaml       traefik · forgejo · mumble · kali
 ├── vaultwarden.yaml    vaultwarden (senhas)
+├── notify.yaml         ntfy (notificacoes push)
 ├── .env.example        template
 └── sops-secrets.yaml   encriptado (SOPS + age)
 
 traefik/                config do proxy reverso
 frigate/                config NVR (detector CPU, cameras)
 suricata/               config IDS + 12 assinaturas
-crowdsec/               acquis · profiles · scenarios · whitelist
+crowdsec/               acquis · profiles · scenarios · whitelist · notifications
 homeassistant/          config HA + dispositivos ESPHome
 monitoring/             configs prometheus + grafana
-scripts/                decrypt-secrets · update-suricata-rules · suricata-stats
+scripts/                init-sops · decrypt-secrets · update-suricata-rules · suricata-stats
 ```
 
 Stacks individuais:
@@ -208,11 +211,45 @@ Nenhum app web exposto diretamente — tudo passa pelo Traefik.
 - mariadb isolado na rede `backend`
 - secrets encriptados com SOPS + age (`.env` gitignored)
 - painel `/admin` do Vaultwarden protegido por `ADMIN_TOKEN` (SOPS); signups desabilitados
+- ntfy com auth `deny-all`; topico de alerts protegido por access token
 - `network_mode: host` apenas onde necessario
 - `suricata-stats` le o `eve.json` somente-leitura (rede `backend`, porta interna, sem bind)
 - `no-new-privileges:true` nos containers host
 - healthchecks e resource limits em todos os containers
-- CI: yamllint, compose-validate, trivy config, trivy cve (12 imagens)
+- CI: yamllint, compose-validate, trivy config, trivy cve (14 imagens)
+
+---
+
+## Notificacoes (ntfy)
+
+ntfy e o canal de push self-hosted: app no celular, Home Assistant e CrowdSec
+publicam nos topicos `alerts` (seguranca) e `home` (cotidiano).
+
+**Primeiro boot:**
+
+```bash
+docker compose -f compose/compose.yaml up -d ntfy
+
+# criar usuarios (auth deny-all)
+# senha admin: NTFY_ADMIN_PASSWORD no sops (sops compose/sops-secrets.yaml)
+docker exec -it ntfy ntfy user add --role=admin admin   # login web + HA
+docker exec ntfy ntfy user add crowdsec                 # service user p/ CrowdSec
+docker exec ntfy ntfy access crowdsec alerts rw         # ACL do topico alerts
+docker exec ntfy ntfy token add crowdsec alerts         # token tk_... -> NTFY_TOKEN_CROWDSEC (sops)
+
+# testar publish (com o token do topico)
+curl -u admin:SUA_SENHA -H "Title: teste" -H "Priority: high" \
+     -d "Homelab funcionando" https://ntfy.home/alerts
+```
+
+**Celular:** instale o app ntfy, use o servidor `https://ntfy.home` e faca login.
+
+**Home Assistant** (Settings > Devices & services > Add Integration > ntfy):
+URL `http://ntfy:80`, usuario/senha admin; adicione os topicos `alerts` e `home`
+(entidades `notify.alerts` / `notify.home` usadas em `homeassistant/automations.yaml`).
+
+**CrowdSec** publica automaticamente no topico de alerts (plugin http, config em
+`crowdsec/notifications/ntfy.yaml`). Teste: `docker exec crowdsec cscli notifications test ntfy_alerts`.
 
 ---
 
@@ -222,6 +259,28 @@ Nenhum app web exposto diretamente — tudo passa pelo Traefik.
 tar -czf backup-$(date +%Y%m%d).tar.gz data/
 cp ~/.config/sops/age/keys.txt backup-age-key.txt
 ```
+
+---
+
+## Usar como template
+
+Este repositorio e um ponto de partida para montar o proprio lab.
+
+1. Clique em **Use this template** (ou fork) no GitHub
+2. Clone e gere seus secrets:
+
+```bash
+bash scripts/init-sops.sh          # chave age + encripta sops-secrets.template.yaml
+sops compose/sops-secrets.yaml     # preencha valores reais
+bash scripts/decrypt-secrets.sh    # gera compose/.env
+docker compose -f compose/compose.yaml up -d
+```
+
+3. Ajuste os hostnames em `traefik/dynamic.yml` e o DNS do roteador.
+4. Veja `SECURITY.md` para rotacao de chaves e hardening do GitHub.
+
+> O `compose/sops-secrets.yaml` versionado so decripta com a chave age do autor.
+> O script `init-sops.sh` encripta o template com a **sua** chave, do zero.
 
 ---
 
@@ -243,6 +302,7 @@ cp ~/.config/sops/age/keys.txt backup-age-key.txt
 | [Frigate](https://frigate.video/) | Blake Blackshear |
 | [Immich](https://immich.app/) | Immich (FUTO) |
 | [SOPS](https://github.com/getsops/sops) | Mozilla |
+| [ntfy](https://ntfy.sh/) | Philipp C. Heckel |
 | [age](https://github.com/FiloSottile/age) | Filippo Valsorda |
 
 Feito por [gustavx404](https://github.com/gustavx404).

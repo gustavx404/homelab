@@ -1,4 +1,8 @@
 ---
+# SOPS + age — configuracao de encriptacao.
+# Chave publica abaixo e SEGURA para commit (apenas a privada ~/.config/sops/age/keys.txt nao pode vazar).
+# Novos colaboradores/forks: rode `bash scripts/init-sops.sh` — ele gera a chave age,
+# registra o recipient aqui e encripta compose/sops-secrets.template.yaml para voce.
 creation_rules:
   - path_regex: .*(secrets|sops).*\.yaml$
     age: age13d6594qhczg39uymwrthg7vyrcexdm0u60a2s2s36ksymh47ketqshq8w6
