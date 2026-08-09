@@ -5,12 +5,3 @@
     - gustavx404:
         - abbr: GH
           href: https://github.com/gustavx404
-          icon: github.png
-
-- Documentation:
-    - Traefik Docs:
-        - abbr: TF
-          href: https://doc.traefik.io/traefik/
-    - Homepage Docs:
-        - abbr: HP
-          href: https://gethomepage.dev/
