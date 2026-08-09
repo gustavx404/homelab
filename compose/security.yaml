@@ -88,7 +88,7 @@ services:
           memory: 128M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:8899/stats || exit 1"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8899/stats')\" || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
