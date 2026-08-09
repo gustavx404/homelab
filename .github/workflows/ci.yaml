@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ibiqlik/action-yamllint@v3
         with:
-          file_or_dir: compose/ homeassistant/ suricata/ monitoring/ crowdsec/
+          file_or_dir: compose/ homeassistant/ suricata/ monitoring/ crowdsec/ traefik/
 
   compose-validate:
     runs-on: ubuntu-latest
@@ -46,7 +46,7 @@ jobs:
           - ghcr.io/home-assistant/home-assistant:stable
           - ghcr.io/esphome/esphome:stable
           - grafana/grafana:11.6.0
-          - caddy:2-alpine
+          - traefik:v3.3
           - prom/prometheus:v3.4.0
           - codeberg.org/forgejo/forgejo:16.0.2
           - crowdsecurity/crowdsec:latest
