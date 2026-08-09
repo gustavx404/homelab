@@ -1,9 +1,9 @@
 # homelab
 
-Infraestrutura auto-hospedada — Docker Compose, 17 servicos, rede zero-confianca.
+Infraestrutura auto-hospedada — Docker Compose, 20 servicos, rede zero-confianca.
 
 [![CI](https://github.com/gustavx404/homelab/actions/workflows/ci.yaml/badge.svg)](https://github.com/gustavx404/homelab/actions)
-[![servicos](https://img.shields.io/badge/servicos-18-3b82f6?style=flat-square)]()
+[![servicos](https://img.shields.io/badge/servicos-20-3b82f6?style=flat-square)]()
 [![suricata](https://img.shields.io/badge/suricata-8-6b7280?style=flat-square)]()
 [![secrets](https://img.shields.io/badge/secrets-sops%2Bage-6b7280?style=flat-square)]()
 
@@ -89,9 +89,9 @@ docker compose -f compose/compose.yaml up -d
 
 | stack | servico | imagem | acesso |
 |-------|---------|--------|--------|
-| home | traefik | `v3.3` | `80,443` |
+| services | traefik | `v3.3` | `80,443` |
 | home | homeassistant | `stable` | interno |
-| home | mariadb | `lts` | interno |
+| database | mariadb | `lts` | interno |
 | home | esphome | `stable` | `6052` host |
 | security | suricata | `latest` | host |
 | security | suricata-stats | `python:3.13-alpine` | interno `8899` |
@@ -108,7 +108,27 @@ docker compose -f compose/compose.yaml up -d
 | media | immich-server | `v3.1.0` | interno |
 | media | immich-machine-learning | `v3.1.0` | interno |
 | media | immich-redis (valkey) | `9` | interno |
-| media | immich-postgres | `14-vectorchord` | interno |
+| media | immich-postgres | `14-vectorchord0.4.3-pgvectors0.2.0` | interno |
+
+### Banco de dados (MariaDB)
+
+MariaDB e o banco central (`compose/database.yaml`, rede `backend`), compartilhado por:
+
+| app | banco | usuario |
+|-----|-------|---------|
+| Home Assistant (recorder) | homeassistant | ha_user |
+| Forgejo | forgejo | forgejo |
+| Vaultwarden | vaultwarden | vaultwarden |
+| CrowdSec | crowdsec | crowdsec |
+
+Bancos e usuarios das apps sao criados no primeiro boot por
+`compose/database-init/01-create-app-databases.sh` (montado em
+`/docker-entrypoint-initdb.d`). Senhas centralizadas no SOPS
+(`FORGEJO_DB_PASSWORD`, `VAULTWARDEN_DB_PASSWORD`, `CROWDSEC_DB_PASSWORD`).
+
+Nao usam MariaDB de proposito: Immich (PostgreSQL + pgvector, exigido pelo ML
+de embeddings), Grafana/Mumble/ntfy (SQLite — volume baixo ou sem suporte a
+MySQL, evitam dependencia no banco central).
 
 ---
 
@@ -118,7 +138,9 @@ docker compose -f compose/compose.yaml up -d
 compose/
 ├── compose.yaml        principal (include)
 ├── network.yaml        rede + secrets
-├── home.yaml           mariadb · homeassistant · esphome
+├── database.yaml       mariadb (banco central: HA · forgejo · vaultwarden · crowdsec)
+├── database-init/      01-create-app-databases.sh (bancos/usuarios no primeiro boot)
+├── home.yaml           homeassistant · esphome
 ├── security.yaml       suricata · crowdsec · suricata-stats
 ├── monitoring.yaml     prometheus · grafana
 ├── media.yaml          frigate · immich (server/ml/redis/postgres)
@@ -126,7 +148,8 @@ compose/
 ├── vaultwarden.yaml    vaultwarden (senhas)
 ├── notify.yaml         ntfy (notificacoes push)
 ├── .env.example        template
-└── sops-secrets.yaml   encriptado (SOPS + age)
+├── sops-secrets.yaml   encriptado (SOPS + age)
+└── sops-secrets.template.yaml  template SOPS (init-sops)
 
 traefik/                config do proxy reverso
 frigate/                config NVR (detector CPU, cameras)
@@ -140,10 +163,12 @@ scripts/                init-sops · decrypt-secrets · update-suricata-rules ·
 Stacks individuais:
 
 ```bash
-docker compose -f compose/network.yaml -f compose/security.yaml up -d
-docker compose -f compose/network.yaml -f compose/home.yaml up -d
+docker compose -f compose/network.yaml -f compose/database.yaml -f compose/security.yaml up -d
+docker compose -f compose/network.yaml -f compose/database.yaml -f compose/home.yaml up -d
 docker compose -f compose/network.yaml -f compose/media.yaml up -d
 ```
+
+Stacks que usam o banco central (home, security, services, vaultwarden) exigem compose/database.yaml na lista.
 
 ---
 
@@ -234,7 +259,7 @@ Nenhum app web exposto diretamente — tudo passa pelo Traefik.
 - `suricata-stats` le o `eve.json` somente-leitura (rede `backend`, porta interna, sem bind)
 - `no-new-privileges:true` nos containers host
 - healthchecks e resource limits em todos os containers
-- CI: yamllint, compose-validate, trivy config, trivy cve (14 imagens)
+- CI: yamllint, compose-validate, trivy config, trivy cve (15 imagens)
 
 ---
 

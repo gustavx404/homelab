@@ -1,0 +1,46 @@
+---
+# Database stack: MariaDB central — banco compartilhado
+# Usado por: Home Assistant (recorder), Forgejo, Vaultwarden e CrowdSec.
+# Bancos/usuarios das apps: compose/database-init/ (criados no primeiro boot).
+
+services:
+  mariadb:
+    image: mariadb:lts
+    container_name: mariadb
+    networks:
+      - backend
+    volumes:
+      - ../data/mariadb:/var/lib/mysql
+      - ../compose/database-init:/docker-entrypoint-initdb.d:ro
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - MARIADB_ROOT_PASSWORD_FILE=/run/secrets/MARIADB_ROOT_PASSWORD
+      - MARIADB_DATABASE_FILE=/run/secrets/MARIADB_DATABASE
+      - MARIADB_USER_FILE=/run/secrets/MARIADB_USER
+      - MARIADB_PASSWORD_FILE=/run/secrets/MARIADB_PASSWORD
+      # Senhas dos bancos das apps (compose/.env gerado pelo sops) —
+      # usadas por compose/database-init/ para criar usuarios no primeiro boot.
+      - FORGEJO_DB_PASSWORD=${FORGEJO_DB_PASSWORD:-fj_db_pass_2026}
+      - VAULTWARDEN_DB_PASSWORD=${VAULTWARDEN_DB_PASSWORD:-vw_db_pass_2026}
+      - CROWDSEC_DB_PASSWORD=${CROWDSEC_DB_PASSWORD:-crowdsec_db_pass_2026}
+    secrets:
+      - MARIADB_ROOT_PASSWORD
+      - MARIADB_DATABASE
+      - MARIADB_USER
+      - MARIADB_PASSWORD
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-buffer-pool-size=256M
+      - --innodb-log-file-size=64M
+      - --max-connections=50
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

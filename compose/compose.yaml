@@ -5,6 +5,7 @@
 
 include:
   - network.yaml
+  - database.yaml
   - home.yaml
   - security.yaml
   - monitoring.yaml
