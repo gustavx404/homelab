@@ -1,15 +1,15 @@
 # homelab
 
-Infraestrutura auto-hospedada — Docker Compose, 16 services, rede zero-confianca.
+Infraestrutura auto-hospedada — Docker Compose, 16 servicos, rede zero-confianca.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/gustavx404/homelab/ci.yaml?style=flat-square&label=ci&color=10b981)](https://github.com/gustavx404/homelab/actions)
-[![services](https://img.shields.io/badge/services-16-3b82f6?style=flat-square)]()
+[![servicos](https://img.shields.io/badge/servicos-16-3b82f6?style=flat-square)]()
 [![suricata](https://img.shields.io/badge/suricata-8-6b7280?style=flat-square)]()
 [![secrets](https://img.shields.io/badge/secrets-sops%2Bage-6b7280?style=flat-square)]()
 
 ---
 
-## Architecture
+## Arquitetura
 
 ```
 Internet → OpenWrt (borda + CrowdSec bouncer)
@@ -20,6 +20,7 @@ Internet → OpenWrt (borda + CrowdSec bouncer)
            │  /         HA│
            │  /grafana    │
            │  /git        │
+           │  /frigate    │
            └──────┬───────┘
                   │  backend network (br-homelab)
      ┌────────┬───┴───┬────────┬────────┬────────┬────────┬────────┐
@@ -32,55 +33,55 @@ Internet → OpenWrt (borda + CrowdSec bouncer)
 ```
 
 - Traefik e o unico ponto de entrada HTTP/S. Todos os apps web passam por ele.
-- Frigate usa path `/frigate` (header `X-Ingress-Path` + WebSocket). Immich nao suporta
-  subpath — exposto na porta dedicada `2283` (LAN).
+- Frigate acessivel em `/frigate` (header `X-Ingress-Path` + WebSocket).
+- Immich nao suporta subpath — exposto na porta `2283` (LAN).
 - Suricata e ESPHome usam `network_mode: host` por necessidade (packet capture / mDNS).
 - CrowdSec envia decisoes de ban para o OpenWrt na borda da rede.
 
 ---
 
-## Quick Start
+## Instalacao
 
 ```bash
-# dependencies
+# dependencias
 curl -fsSL https://get.docker.com -o get-docker.sh && sudo sh ./get-docker.sh
 sudo apt install -y docker-compose-v2 age yamllint
 curl -LO https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.linux.amd64
 sudo install -m 755 sops-v3.13.3.linux.amd64 /usr/local/bin/sops
 
-# generate age key and copy public key to .sops.yaml
+# gerar chave age e copiar chave publica para .sops.yaml
 age-keygen -o ~/.config/sops/age/keys.txt
 
-# edit secrets with real values
+# editar secrets com valores reais
 sops compose/sops-secrets.yaml
 
-# decrypt and generate .env
+# decriptar e gerar .env
 bash scripts/decrypt-secrets.sh
 
-# deploy all stacks
+# subir todos os stacks
 docker compose -f compose/compose.yaml up -d
 ```
 
-**Access** — path-based routing, zero DNS dependency. Self-signed TLS.
+**Acesso** — roteamento por path, sem dependencia de DNS. TLS auto-assinado.
 
-| path | service |
+| path | servico |
 |------|---------|
 | `/` | Home Assistant |
 | `/grafana/` | Grafana |
 | `/git/` | Forgejo |
-| `/frigate/` | Frigate (NVR) |
+| `/frigate/` | Frigate (NVR cameras) |
 
-> Immich (fotos) nao suporta subpath — acesse em `http://192.168.20.189:2283`.
+> Immich (fotos) nao suporta subpath — acessar em `http://192.168.20.189:2283`.
 
 ---
 
-## Services
+## Servicos
 
-| stack | service | image | access |
-|-------|---------|-------|--------|
+| stack | servico | imagem | acesso |
+|-------|---------|--------|--------|
 | home | traefik | `v3.3` | `80,443` |
-| home | homeassistant | `stable` | internal |
-| home | mariadb | `lts` | internal |
+| home | homeassistant | `stable` | interno |
+| home | mariadb | `lts` | interno |
 | home | esphome | `stable` | `6052` host |
 | security | suricata | `latest` | host |
 | security | crowdsec | `latest` | `8080` lapi |
@@ -88,55 +89,56 @@ docker compose -f compose/compose.yaml up -d
 | services | mumble | `latest` | `64738` tcp/udp |
 | services | kali | `rolling` | cli |
 | monitoring | prometheus | `v3.4.0` | `127.0.0.1:9090` |
-| monitoring | grafana | `11.6.0` | internal |
+| monitoring | grafana | `11.6.0` | interno |
 | media | frigate | `stable` | `/frigate` |
 | media | immich-server | `v3.1.0` | `2283` |
-| media | immich-machine-learning | `v3.1.0` | internal |
-| media | immich-redis (valkey) | `9` | internal |
-| media | immich-postgres | `14-vectorchord` | internal |
+| media | immich-machine-learning | `v3.1.0` | interno |
+| media | immich-redis (valkey) | `9` | interno |
+| media | immich-postgres | `14-vectorchord` | interno |
 
 ---
 
-## Structure
+## Estrutura
 
 ```
 compose/
-├── compose.yaml        master (include)
-├── network.yaml        network + secrets
+├── compose.yaml        principal (include)
+├── network.yaml        rede + secrets
 ├── home.yaml           mariadb · homeassistant · esphome
 ├── security.yaml       suricata · crowdsec
 ├── monitoring.yaml     prometheus · grafana
 ├── media.yaml          frigate · immich (server/ml/redis/postgres)
 ├── services.yaml       traefik · forgejo · mumble · kali
 ├── .env.example        template
-└── sops-secrets.yaml   encrypted (SOPS + age)
+└── sops-secrets.yaml   encriptado (SOPS + age)
 
-traefik/                reverse proxy config
-frigate/                NVR config (detector CPU, camera placeholder)
-suricata/               IDS config + 12 signatures
+traefik/                config do proxy reverso
+frigate/                config NVR (detector CPU, cameras)
+suricata/               config IDS + 12 assinaturas
 crowdsec/               acquis · profiles · scenarios · whitelist
-homeassistant/          HA config + ESPHome devices
-monitoring/             prometheus + grafana configs
+homeassistant/          config HA + dispositivos ESPHome
+monitoring/             configs prometheus + grafana
 scripts/                decrypt-secrets · update-suricata-rules
 ```
 
-Individual stacks:
+Stacks individuais:
 
 ```bash
 docker compose -f compose/network.yaml -f compose/security.yaml up -d
 docker compose -f compose/network.yaml -f compose/home.yaml up -d
+docker compose -f compose/network.yaml -f compose/media.yaml up -d
 ```
 
 ---
 
 ## IDS/IPS
 
-Suricata monitors `eno1` and `br-homelab`. CrowdSec reads `eve.json` in real time. Two alerts within 60 seconds trigger a 6-hour ban, propagated to OpenWrt at the network edge.
+Suricata monitora `eno1` e `br-homelab`. CrowdSec processa `eve.json` em tempo real. Dois alertas em 60 segundos disparam ban de 6 horas, propagado para o OpenWrt na borda.
 
-| signature | threshold |
-|-----------|-----------|
-| icmp echo | info only |
-| icmp sweep | 10 / 30s |
+| assinatura | limite |
+|-----------|--------|
+| icmp echo | informativo |
+| varredura icmp | 10 / 30s |
 | syn scan | 5 / 3s |
 | connect scan | 5 / 3s |
 | null scan | 3 / 10s |
@@ -148,52 +150,50 @@ Suricata monitors `eno1` and `br-homelab`. CrowdSec reads `eve.json` in real tim
 | path traversal | — |
 | sql injection | — |
 
-CrowdSec profiles — scenario `homelab/scan-detection`:
+Perfis CrowdSec — cenario `homelab/scan-detection`:
 
-| trigger | duration |
-|---------|----------|
-| first detection | 6 h |
-| scan pattern | 24 h |
-| repeat (>=3) | 48 h |
+| gatilho | duracao |
+|---------|---------|
+| primeira deteccao | 6 h |
+| padrao de scan | 24 h |
+| reincidente (>=3) | 48 h |
 
 ```bash
-docker exec crowdsec cscli decisions list      # active bans
-docker exec kali nmap -sS -p 1-100 <host>     # test
+docker exec crowdsec cscli decisions list      # bans ativos
+docker exec kali nmap -sS -p 1-100 <host>     # teste
 ```
 
 ---
 
-## Exposed Ports
+## Portas expostas
 
-| port | service | reason |
-|------|---------|--------|
-| `22` | ssh | admin access |
-| `80,443` | traefik | single entry point |
+| porta | servico | motivo |
+|-------|---------|--------|
+| `22` | ssh | acesso administrativo |
+| `80,443` | traefik | unico ponto de entrada |
 | `2222` | forgejo ssh | git push/pull |
 | `6052` | esphome | host network (mDNS) |
-| `64738` | mumble | VoIP protocol |
-| `8080` | crowdsec lapi | OpenWrt bouncer |
+| `64738` | mumble | protocolo VoIP |
+| `8080` | crowdsec lapi | bouncer OpenWrt |
 | `2283` | immich | fotos/videos (subpath nao suportado) |
 | `8554` | frigate | RTSP restream |
 | `8555` | frigate | WebRTC tcp/udp |
 
-Frigate UI/API (8971) nao e exposta — somente via Traefik em `/frigate` com auth.
-
-Prometheus bound to `127.0.0.1` only. Zero web apps exposed directly — everything through Traefik.
+Frigate UI/API (8971) nao exposta — somente via Traefik em `/frigate` com autenticacao.
 
 ---
 
-## Security
+## Seguranca
 
-- all web apps via Traefik (HA, Grafana, Forgejo, Frigate); excecao documentada:
-  Immich na porta 2283 (subpath nao suportado pelo Immich)
-- prometheus bound to `127.0.0.1` only (internal metrics)
-- mariadb isolated on `backend` network
-- secrets encrypted with SOPS + age (`.env` gitignored)
-- `network_mode: host` only where necessary
-- `no-new-privileges:true` on host containers
-- healthchecks and resource limits on all containers
-- CI: yamllint, compose-validate, trivy config, trivy cve (12 images)
+- todos os apps web acessiveis via Traefik (HA, Grafana, Forgejo, Frigate)
+- Immich na porta 2283 (excecao documentada — subpath nao suportado)
+- prometheus vinculado apenas a `127.0.0.1` (metricas internas)
+- mariadb isolado na rede `backend`
+- secrets encriptados com SOPS + age (`.env` gitignored)
+- `network_mode: host` apenas onde necessario
+- `no-new-privileges:true` nos containers host
+- healthchecks e resource limits em todos os containers
+- CI: yamllint, compose-validate, trivy config, trivy cve (12 imagens)
 
 ---
 
@@ -206,10 +206,10 @@ cp ~/.config/sops/age/keys.txt backup-age-key.txt
 
 ---
 
-## Credits
+## Creditos
 
-| project | author |
-|---------|--------|
+| projeto | autor |
+|---------|-------|
 | [EASUN SMG II 11Kw ESPHome](https://github.com/robgt978/Easun-SMG-II-11Kw-esphome-) | robgt978 |
 | [Suricata](https://suricata.io/) | OISF |
 | [CrowdSec](https://github.com/crowdsecurity/crowdsec) | CrowdSec |
