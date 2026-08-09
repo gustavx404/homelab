@@ -67,7 +67,7 @@ services:
       - FORGEJO__database__HOST=mariadb:3306
       - FORGEJO__database__NAME=forgejo
       - FORGEJO__database__USER=forgejo
-      - FORGEJO__database__PASSWD=${FORGEJO_DB_PASSWORD:-fj_db_pass_2026}
+      - FORGEJO__database__PASSWD=${FORGEJO_DB_PASSWORD:?FORGEJO_DB_PASSWORD required}
       - FORGEJO__server__ROOT_URL=https://git.home/
       - FORGEJO__metrics__ENABLED=true
     deploy:

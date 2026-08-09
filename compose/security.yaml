@@ -45,7 +45,7 @@ services:
       - UID=1000
       - NTFY_TOPIC_ALERTS=${NTFY_TOPIC_ALERTS:-alerts}
       - NTFY_TOKEN_CROWDSEC=${NTFY_TOKEN_CROWDSEC:-}
-      - CROWDSEC_DB_PASSWORD=${CROWDSEC_DB_PASSWORD:-crowdsec_db_pass_2026}
+      - CROWDSEC_DB_PASSWORD=${CROWDSEC_DB_PASSWORD:?CROWDSEC_DB_PASSWORD required}
     volumes:
       - ../data/suricata:/var/log/suricata:ro
       - crowdsec_data:/var/lib/crowdsec

@@ -20,9 +20,10 @@ services:
       - MARIADB_PASSWORD_FILE=/run/secrets/MARIADB_PASSWORD
       # Senhas dos bancos das apps (compose/.env gerado pelo sops) —
       # usadas por compose/database-init/ para criar usuarios no primeiro boot.
-      - FORGEJO_DB_PASSWORD=${FORGEJO_DB_PASSWORD:-fj_db_pass_2026}
-      - VAULTWARDEN_DB_PASSWORD=${VAULTWARDEN_DB_PASSWORD:-vw_db_pass_2026}
-      - CROWDSEC_DB_PASSWORD=${CROWDSEC_DB_PASSWORD:-crowdsec_db_pass_2026}
+      - FORGEJO_DB_PASSWORD=${FORGEJO_DB_PASSWORD:?FORGEJO_DB_PASSWORD required}
+      - VAULTWARDEN_DB_PASSWORD=${VAULTWARDEN_DB_PASSWORD:?VAULTWARDEN_DB_PASSWORD required}
+      - CROWDSEC_DB_PASSWORD=${CROWDSEC_DB_PASSWORD:?CROWDSEC_DB_PASSWORD required}
+      - GRAFANA_DB_PASSWORD=${GRAFANA_DB_PASSWORD:?GRAFANA_DB_PASSWORD required}
     secrets:
       - MARIADB_ROOT_PASSWORD
       - MARIADB_DATABASE
@@ -39,6 +40,14 @@ services:
         limits:
           memory: 512M
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
