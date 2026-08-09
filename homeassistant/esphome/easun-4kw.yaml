@@ -1,7 +1,7 @@
 substitutions:
   name: esp32-easun-rs232
   friendly_name: esp32-easun-rs232
-  device_description: "Monitor and control a ISolar/EASUN SMG II 11Kw inverter via RS232"
+  device_description: "Monitor and control EASUN 4Kw inverter via RS232"
   tx_pin: GPIO16
   rx_pin: GPIO17
 

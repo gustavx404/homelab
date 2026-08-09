@@ -90,6 +90,7 @@ docker compose -f compose/compose.yaml up -d
 ├── homeassistant/
 │   ├── configuration.yaml    # Config do Home Assistant
 │   ├── secrets.yaml          # !env_var bridge pras env vars
+│   ├── ha-entrypoint.sh      # Wrapper que previne vazamento de secrets no docker inspect
 │   └── esphome/
 │       └── easun-4kw.yaml    # Inversor EASUN SMG II 11Kw
 ├── caddy/
@@ -145,7 +146,7 @@ Recorder usa MariaDB em vez de SQLite — mais rapido, confiavel, suporta histor
 | 1000014 | XMAS scan | `nmap -sX` |
 | 1000020 | Port scan | 50+ portas em 10s |
 | 1000030 | UDP scan | `nmap -sU` |
-| 1000040 | SSH brute force | 5+ tentativas em 60s |
+| 1000040 | SSH brute force | 8+ novas conexoes em 30s |
 | 1000050 | Path traversal | `../` em URL |
 | 1000051 | SQL injection | `union select` em URL |
 
