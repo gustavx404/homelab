@@ -1,0 +1,16 @@
+# CrowdSec Web UI — minimal config for homelab
+auth:
+  enabled: false
+crowdsec:
+  alertFilters:
+    includeOrigins:
+      - crowdsec
+instances:
+  - id: default
+    name: CrowdSec
+    lapi:
+      url: http://crowdsec:8080
+      auth:
+        username: crowdsec-web-ui
+        password:
+          env: CONFIG_INSTANCE_LAPI_AUTH_PASSWORD

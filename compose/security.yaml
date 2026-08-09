@@ -80,10 +80,10 @@ services:
       - CONFIG_INSTANCE_LAPI_URL=http://crowdsec:8080
       - CONFIG_INSTANCE_LAPI_AUTH_USERNAME=crowdsec-web-ui
       - CONFIG_INSTANCE_LAPI_AUTH_PASSWORD=${CROWDSEC_WEBUI_LAPI_PASSWORD}
-      - CONFIG_UI_READ_ONLY=true
       - CONFIG_CROWDSEC_ALERT_FILTERS_INCLUDE_ORIGINS=[crowdsec]
     volumes:
       - crowdsec_webui_data:/app/data
+      - ../crowdsec/web-ui-config.yaml:/app/data/config.yaml:ro
     deploy:
       resources:
         limits:
