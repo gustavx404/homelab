@@ -162,13 +162,14 @@ docker exec kali nmap -sS -p 1-100 <host>     # teste
 | `64738` | mumble | protocolo VoIP |
 | `8080` | crowdsec lapi | bouncer OpenWrt |
 
-Prometheus e Grafana vinculados apenas a `127.0.0.1`. Nenhum app web exposto diretamente.
+Prometheus vinculado apenas a `127.0.0.1`. Nenhum app web exposto diretamente — tudo passa pelo Traefik.
 
 ---
 
 ## Seguranca
 
-- grafana e prometheus em `127.0.0.1`
+- todos os apps web acessiveis apenas via Traefik (HA, Grafana, Forgejo)
+- prometheus vinculado apenas a `127.0.0.1` (metricas internas)
 - mariadb isolado na rede `backend`
 - secrets encriptados com SOPS + age (`.env` gitignored)
 - `network_mode: host` apenas onde necessario
