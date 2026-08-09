@@ -1,0 +1,114 @@
+---
+# Services stack: proxy, git, voip, pentest
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    networks:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../data/caddy:/data
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep caddy > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:16.0.2
+    container_name: forgejo
+    networks:
+      - backend
+    ports:
+      - "3001:3000"
+      - "2222:22"
+    volumes:
+      - ../data/forgejo:/data
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - FORGEJO__database__DB_TYPE=sqlite3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  mumble:
+    image: mumblevoip/mumble-server:latest
+    container_name: mumble
+    networks:
+      - backend
+    ports:
+      - "64738:64738"
+      - "64738:64738/udp"
+    volumes:
+      - ../data/mumble:/data
+    environment:
+      TZ: "${TZ}"
+      MUMBLE_CONFIG_welcometext: "Welcome to Ducks Server! Quack quack! Channels: Home | Study | Gaming | AFK"
+      MUMBLE_CONFIG_registername: "Ducks"
+      MUMBLE_CONFIG_port: "64738"
+      MUMBLE_CONFIG_users: "100"
+      MUMBLE_CONFIG_defaultchannel: "1"
+      MUMBLE_CONFIG_rememberchannel: "false"
+      MUMBLE_SUPERUSER_PASSWORD: "${MUMBLE_CONFIG_supw}"
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep mumble-server > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  kali:
+    image: kalilinux/kali-rolling:latest
+    container_name: kali
+    networks:
+      - backend
+    volumes:
+      - ../data/kali:/root
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - TZ=${TZ}
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - /bin/bash
+      - -c
+      - |
+        apt-get update -qq && apt-get install -y -qq --no-install-recommends kali-linux-headless 2>/dev/null || true
+        echo "Kali Linux ready. Use: docker exec -it kali bash"
+        tail -f /dev/null
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "true"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

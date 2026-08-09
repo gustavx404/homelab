@@ -1,0 +1,8 @@
+# CrowdSec acquisition — log sources to monitor
+# https://docs.crowdsec.net/docs/concepts/
+
+---
+filenames:
+  - /var/log/suricata/eve.json
+labels:
+  type: suricata

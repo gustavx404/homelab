@@ -16,13 +16,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ibiqlik/action-yamllint@v3
         with:
-          file_or_dir: compose/ homeassistant/ suricata/ monitoring/
+          file_or_dir: compose/ homeassistant/ suricata/ monitoring/ crowdsec/
 
   compose-validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate compose
+      - name: Validate all stacks
         run: docker compose -f compose/compose.yaml config --quiet
 
   config-scan:
@@ -49,6 +49,7 @@ jobs:
           - caddy:2-alpine
           - prom/prometheus:v3.4.0
           - codeberg.org/forgejo/forgejo:16.0.2
+          - crowdsecurity/crowdsec:latest
     steps:
       - uses: actions/checkout@v4
       - name: Scan ${{ matrix.image }}

@@ -1,0 +1,18 @@
+---
+# Shared networks and secrets — loaded first in all compose commands
+
+networks:
+  backend:
+    driver: bridge
+
+secrets:
+  MARIADB_ROOT_PASSWORD:
+    environment: MARIADB_ROOT_PASSWORD
+  MARIADB_DATABASE:
+    environment: MARIADB_DATABASE
+  MARIADB_USER:
+    environment: MARIADB_USER
+  MARIADB_PASSWORD:
+    environment: MARIADB_PASSWORD
+  RECORDER_DB_URL:
+    environment: RECORDER_DB_URL
