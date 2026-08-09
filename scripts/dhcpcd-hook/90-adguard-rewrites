@@ -1,0 +1,14 @@
+#!/bin/sh
+# dhcpcd hook: na renovacao do lease, re-sincroniza a rewrite *.home no AdGuard
+# (resposta imediata, sem esperar o timer de 30s). Roda como root, em background.
+# Instalado por scripts/install-adguard-rewrites-watch.sh.
+case "$reason" in
+  BOUND|RENEW|REBOUND|REBOOT|STATIC)
+    IFACE=""
+    [ -f /etc/adguard-rewrites/iface ] && IFACE=$(cat /etc/adguard-rewrites/iface 2>/dev/null)
+    if [ -z "$IFACE" ] || [ "$ifname" = "$IFACE" ]; then
+      nohup __SCRIPT__ --check >/dev/null 2>&1 &
+    fi
+    ;;
+esac
+exit 0

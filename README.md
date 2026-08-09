@@ -81,11 +81,37 @@ cliente no AdGuard). Clientes com lease ativo so mudam ao renovar; force com
 > Com `noresolv=1`, se o AdGuard cair a LAN fica sem DNS — monitore o
 > healthcheck: `docker ps --filter name=adguard` (coluna STATUS).
 
-Hostnames no LuCI → DHCP and DNS → Hosts (ou `/etc/hosts`):
+**DNS automatico (rewrites `.home`)** — o AdGuard resolve `*.home` sozinho,
+sem `/etc/hosts` manual. O script `scripts/adguard-rewrites.sh` detecta o IP do
+host como variavel do sistema (`ip -4 route get 1.1.1.1` — ignora as bridges do
+Docker), faz login na API do AdGuard e garante a rewrite `*.home -> <IP>`
+(idempotente; wildcard cobre qualquer subdominio novo automaticamente). Se o
+lease DHCP mudar, o watcher reaplica sozinho:
 
+- **systemd timer** a cada 30s: `scripts/adguard-rewrites.sh --check` (fast path —
+  so chama a API se o IP mudou);
+- **hook dhcpcd** (`/usr/lib/dhcpcd/dhcpcd-hooks/90-adguard-rewrites`): dispara na
+  hora da renovacao do lease (resposta imediata, sem esperar o timer);
+- **auto-cura de drift**: se a rewrite for apagada/resetada no AdGuard, o `--check`
+  detecta via probe DNS (1x a cada 5min, nome unico p/ evitar cache) e reaplica.
+
+Instalacao:
+
+```bash
+# 1) credenciais do admin do AdGuard (uma vez)
+sops compose/sops-secrets.yaml        # adicionar ADGUARD_USER / ADGUARD_PASSWORD
+bash scripts/decrypt-secrets.sh
+
+# 2) watcher (timer 30s + hook dhcpcd)
+sudo bash scripts/install-adguard-rewrites-watch.sh
+
+# 3) aplicar ja
+scripts/adguard-rewrites.sh --apply   # confira: dig @192.168.20.189 ha.home
 ```
-192.168.20.189 adguard.home home.home ha.home grafana.home git.home frigate.home photos.home vault.home ntfy.home
-```
+
+A lista de hostnames no LuCI do OpenWrt (`/etc/hosts`) fica opcional — os clientes
+resolvem `*.home` direto pelo AdGuard (o dnsmasq do roteador ja encaminha tudo para
+ele). Remova a lista se quiser manter um unico ponto de verdade.
 
 **Acesso** — hostname-based routing, TLS auto-assinado.
 

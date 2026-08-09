@@ -1,0 +1,10 @@
+[Unit]
+Description=Verifica troca de IP do homelab e atualiza rewrite do AdGuard (30s)
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=__INTERVAL__
+RandomizedDelaySec=10s
+
+[Install]
+WantedBy=timers.target
