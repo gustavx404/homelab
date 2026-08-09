@@ -4,7 +4,7 @@ Infraestrutura auto-hospedada — Docker Compose, 20 servicos, rede zero-confian
 
 [![CI](https://github.com/gustavx404/homelab/actions/workflows/ci.yaml/badge.svg)](https://github.com/gustavx404/homelab/actions)
 [![servicos](https://img.shields.io/badge/servicos-20-3b82f6?style=flat-square)]()
-[![suricata](https://img.shields.io/badge/suricata-8-6b7280?style=flat-square)]()
+[![suricata](https://img.shields.io/badge/suricata-12-6b7280?style=flat-square)]()
 [![secrets](https://img.shields.io/badge/secrets-sops%2Bage-6b7280?style=flat-square)]()
 
 ---
