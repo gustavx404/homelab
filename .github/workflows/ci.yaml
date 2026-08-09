@@ -50,6 +50,7 @@ jobs:
           - traefik:v3.3
           - prom/prometheus:v3.4.0
           - codeberg.org/forgejo/forgejo:16.0.2
+          - docker.io/vaultwarden/server:latest
           - crowdsecurity/crowdsec:latest
           - ghcr.io/blakeblackshear/frigate:stable
           - ghcr.io/immich-app/immich-server:v3.1.0@sha256:b434cb9287eea1471c9974845914d4dd328c9c2d652e446ed4930f99944f0ceb

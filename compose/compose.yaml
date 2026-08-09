@@ -10,3 +10,4 @@ include:
   - monitoring.yaml
   - media.yaml
   - services.yaml
+  - vaultwarden.yaml

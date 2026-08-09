@@ -1,5 +1,5 @@
 # Traefik dynamic configuration — hostname-based routing
-# DNS: 192.168.20.189 ha.home grafana.home git.home frigate.home photos.home
+# DNS: 192.168.20.189 ha.home grafana.home git.home frigate.home photos.home vault.home
 
 http:
   middlewares:
@@ -72,6 +72,13 @@ http:
       service: homepage
       tls: {}
 
+    vaultwarden:
+      rule: "Host(`vault.home`)"
+      entryPoints:
+        - websecure
+      service: vaultwarden
+      tls: {}
+
   services:
     homeassistant:
       loadBalancer:
@@ -103,3 +110,8 @@ http:
       loadBalancer:
         servers:
           - url: "http://homepage:3000"
+
+    vaultwarden:
+      loadBalancer:
+        servers:
+          - url: "http://vaultwarden:80"

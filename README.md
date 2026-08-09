@@ -1,9 +1,9 @@
 # homelab
 
-Infraestrutura auto-hospedada — Docker Compose, 16 servicos, rede zero-confianca.
+Infraestrutura auto-hospedada — Docker Compose, 17 servicos, rede zero-confianca.
 
 [![CI](https://github.com/gustavx404/homelab/actions/workflows/ci.yaml/badge.svg)](https://github.com/gustavx404/homelab/actions)
-[![servicos](https://img.shields.io/badge/servicos-16-3b82f6?style=flat-square)]()
+[![servicos](https://img.shields.io/badge/servicos-17-3b82f6?style=flat-square)]()
 [![suricata](https://img.shields.io/badge/suricata-8-6b7280?style=flat-square)]()
 [![secrets](https://img.shields.io/badge/secrets-sops%2Bage-6b7280?style=flat-square)]()
 
@@ -23,6 +23,7 @@ Internet → OpenWrt (borda + CrowdSec bouncer)
            │  git.home     → Forgejo
            │  frigate.home → Frigate (NVR)
            │  photos.home  → Immich (fotos)
+           │  vault.home   → Vaultwarden (senhas)
            └──────┬───────┘
                   │  backend network (br-homelab)
      ┌────────┬───┴───┬────────┬────────┬────────┬────────┬────────┐
@@ -66,7 +67,7 @@ docker compose -f compose/compose.yaml up -d
 **DNS** — adicionar ao OpenWrt (LuCI → DHCP and DNS → Hosts) ou `/etc/hosts`:
 
 ```
-192.168.20.189 home.home ha.home grafana.home git.home frigate.home photos.home
+192.168.20.189 home.home ha.home grafana.home git.home frigate.home photos.home vault.home
 ```
 
 **Acesso** — hostname-based routing, TLS auto-assinado.
@@ -79,6 +80,7 @@ docker compose -f compose/compose.yaml up -d
 | `git.home` | Forgejo |
 | `frigate.home` | Frigate (NVR) |
 | `photos.home` | Immich (fotos) |
+| `vault.home` | Vaultwarden (senhas) |
 
 ---
 
@@ -97,6 +99,7 @@ docker compose -f compose/compose.yaml up -d
 | services | forgejo | `16.0.2` | `2222` ssh |
 | services | mumble | `latest` | `64738` tcp/udp |
 | services | kali | `rolling` | cli |
+| services | vaultwarden | `docker.io/vaultwarden/server:latest` | interno |
 | monitoring | prometheus | `v3.4.0` | `127.0.0.1:9090` |
 | monitoring | grafana | `11.6.0` | interno |
 | media | frigate | `stable` | interno |
@@ -118,6 +121,7 @@ compose/
 ├── monitoring.yaml     prometheus · grafana
 ├── media.yaml          frigate · immich (server/ml/redis/postgres)
 ├── services.yaml       traefik · forgejo · mumble · kali
+├── vaultwarden.yaml    vaultwarden (senhas)
 ├── .env.example        template
 └── sops-secrets.yaml   encriptado (SOPS + age)
 
@@ -203,6 +207,7 @@ Nenhum app web exposto diretamente — tudo passa pelo Traefik.
 - prometheus vinculado apenas a `127.0.0.1` (metricas internas)
 - mariadb isolado na rede `backend`
 - secrets encriptados com SOPS + age (`.env` gitignored)
+- painel `/admin` do Vaultwarden protegido por `ADMIN_TOKEN` (SOPS); signups desabilitados
 - `network_mode: host` apenas onde necessario
 - `suricata-stats` le o `eve.json` somente-leitura (rede `backend`, porta interna, sem bind)
 - `no-new-privileges:true` nos containers host
@@ -230,6 +235,7 @@ cp ~/.config/sops/age/keys.txt backup-age-key.txt
 | [Mumble](https://github.com/mumble-voip/mumble) | Mumble VoIP |
 | [Traefik](https://github.com/traefik/traefik) | Traefik Labs |
 | [Forgejo](https://forgejo.org/) | Forgejo |
+| [Vaultwarden](https://github.com/dani-garcia/vaultwarden) | dani-garcia |
 | [ESPHome](https://esphome.io/) | ESPHome |
 | [Home Assistant](https://www.home-assistant.io/) | Home Assistant |
 | [Grafana](https://grafana.com/) | Grafana Labs |

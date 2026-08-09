@@ -70,6 +70,13 @@
           password: "{{HOMEPAGE_VAR_CROWDSEC_PASSWORD}}"
 
 - Servicos:
+    - Vaultwarden:
+        icon: /icons/vaultwarden.svg
+        href: https://vault.home
+        description: Gerenciador de senhas
+        server: docker
+        container: vaultwarden
+
     - Forgejo:
         icon: forgejo.png
         href: https://git.home
