@@ -16,25 +16,25 @@ Internet → OpenWrt (borda + CrowdSec bouncer)
                 │
                 ▼  :80 :443
            ┌─────────────┐
-           │  Traefik v3  │  reverse proxy · path-based routing
-           │  /         HA│
-           │  /grafana    │
-           │  /git        │
-           │  /frigate    │
+           │  Traefik v3  │  proxy reverso · hostname-based routing
+           │              │
+           │  ha.home      → Home Assistant
+           │  grafana.home → Grafana
+           │  git.home     → Forgejo
+           │  frigate.home → Frigate (NVR)
+           │  photos.home  → Immich (fotos)
            └──────┬───────┘
                   │  backend network (br-homelab)
      ┌────────┬───┴───┬────────┬────────┬────────┬────────┬────────┐
      ▼        ▼       ▼        ▼        ▼        ▼        ▼        ▼
   mariadb  grafana prometheus forgejo  mumble  crowdsec  immich  frigate
-     └────────┴───────┴───┬────┴────────┴────│───┘       │        │
-                     host network             ▼   photos.home :8554/55
+     └────────┴───────┴───┬────┴────────┴────│───┘
+                     host network             ▼
                suricata · esphome       LAPI :8080
                (eno1)     (:6052)       (→ OpenWrt)
 ```
 
 - Traefik e o unico ponto de entrada HTTP/S. Todos os apps web passam por ele.
-- Frigate acessivel em `/frigate` (header `X-Ingress-Path` + WebSocket).
-- Immich nao suporta subpath — roteado por hostname `photos.home` via Traefik (HTTPS, sem porta explicita).
 - Suricata e ESPHome usam `network_mode: host` por necessidade (packet capture / mDNS).
 - CrowdSec envia decisoes de ban para o OpenWrt na borda da rede.
 
@@ -62,16 +62,21 @@ bash scripts/decrypt-secrets.sh
 docker compose -f compose/compose.yaml up -d
 ```
 
-**Acesso** — roteamento por path (sem dependencia de DNS publico) + um hostname LAN para o Immich. TLS auto-assinado.
+**DNS** — adicionar ao OpenWrt (LuCI → DHCP and DNS → Hosts) ou `/etc/hosts`:
 
-| path | servico |
-|------|---------|
-| `/` | Home Assistant |
-| `/grafana/` | Grafana |
-| `/git/` | Forgejo |
-| `/frigate/` | Frigate (NVR cameras) |
+```
+192.168.20.189 ha.home grafana.home git.home frigate.home photos.home
+```
 
-> Immich (fotos) nao suporta subpath — acesso em `https://photos.home` (registro DNS local: dnsmasq no OpenWrt ou /etc/hosts por dispositivo).
+**Acesso** — hostname-based routing, TLS auto-assinado.
+
+| hostname | servico |
+|----------|---------|
+| `ha.home` | Home Assistant |
+| `grafana.home` | Grafana |
+| `git.home` | Forgejo |
+| `frigate.home` | Frigate (NVR) |
+| `photos.home` | Immich (fotos) |
 
 ---
 
@@ -90,8 +95,8 @@ docker compose -f compose/compose.yaml up -d
 | services | kali | `rolling` | cli |
 | monitoring | prometheus | `v3.4.0` | `127.0.0.1:9090` |
 | monitoring | grafana | `11.6.0` | interno |
-| media | frigate | `stable` | `/frigate` |
-| media | immich-server | `v3.1.0` | `https://photos.home` |
+| media | frigate | `stable` | interno |
+| media | immich-server | `v3.1.0` | interno |
 | media | immich-machine-learning | `v3.1.0` | interno |
 | media | immich-redis (valkey) | `9` | interno |
 | media | immich-postgres | `14-vectorchord` | interno |
@@ -178,17 +183,13 @@ docker exec kali nmap -sS -p 1-100 <host>     # teste
 | `8554` | frigate | RTSP restream |
 | `8555` | frigate | WebRTC tcp/udp |
 
-Frigate UI/API (8971) nao exposta — somente via Traefik em `/frigate`, protegida por basicAuth (credencial em sops-secrets.yaml: FRIGATE_AUTH_USER/FRIGATE_AUTH_PASSWORD).
+Nenhum app web exposto diretamente — tudo passa pelo Traefik.
 
 ---
 
 ## Seguranca
 
-- todos os apps web acessiveis via Traefik (HA, Grafana, Forgejo, Frigate)
-- Immich em `https://photos.home` (unica excecao host-based ao roteamento por path; tem login proprio)
-- app mobile do Immich: aceitar certificado auto-assinado nas configuracoes do servidor
-- Frigate exige basicAuth no `/frigate` (Frigate nao tem login embutido)
-- RTSP/WebRTC do Frigate (8554/8555) sem auth — restringir por firewall/allowlist
+- todos os apps web acessiveis apenas via Traefik
 - prometheus vinculado apenas a `127.0.0.1` (metricas internas)
 - mariadb isolado na rede `backend`
 - secrets encriptados com SOPS + age (`.env` gitignored)
@@ -202,7 +203,7 @@ Frigate UI/API (8971) nao exposta — somente via Traefik em `/frigate`, protegi
 ## Backup
 
 ```bash
-tar -czf backup-$(date +%Y%m%d).tar.gz data/  # inclui immich/ (library+postgres) e frigate/
+tar -czf backup-$(date +%Y%m%d).tar.gz data/
 cp ~/.config/sops/age/keys.txt backup-age-key.txt
 ```
 

@@ -1,6 +1,5 @@
-# Traefik dynamic configuration — path-based routing (any host)
-# Works with any IP or hostname — no hardcoded dependencies
-# Excecao: Immich nao suporta subpath — router host-based (photos.home)
+# Traefik dynamic configuration — hostname-based routing
+# DNS: 192.168.20.189 ha.home grafana.home git.home frigate.home photos.home
 
 http:
   middlewares:
@@ -10,84 +9,54 @@ http:
           X-Forwarded-For: ""
           X-Forwarded-Host: ""
           X-Forwarded-Proto: ""
-    grafana-strip:
-      stripPrefix:
-        prefixes:
-          - "/grafana"
-    git-strip:
-      stripPrefix:
-        prefixes:
-          - "/git"
-    frigate-strip:
-      stripPrefix:
-        prefixes:
-          - "/frigate"
     frigate-headers:
       headers:
         customRequestHeaders:
           X-Ingress-Path: "/frigate"
-    # Frigate basicAuth — senha em sops-secrets.yaml (FRIGATE_AUTH_USER / FRIGATE_AUTH_PASSWORD)
-    # Para rotacionar: docker run --rm httpd:alpine htpasswd -nbB -C 12 <user> <senha>
     frigate-auth:
       basicAuth:
         users:
           - "frigate:$2y$12$8qbhOjw2gna2jO31S9jvTulqUdzoQdgYWMjqe9lyI6dx9kKYAXMTe"
 
   routers:
-    # Grafana — higher priority, path-based
-    grafana:
-      rule: "PathPrefix(`/grafana`)"
-      priority: 10
-      entryPoints:
-        - websecure
-      middlewares:
-        - grafana-strip
-      service: grafana
-      tls: {}
-
-    # Forgejo — higher priority, path-based
-    forgejo:
-      rule: "PathPrefix(`/git`)"
-      priority: 10
-      entryPoints:
-        - websecure
-      middlewares:
-        - git-strip
-      service: forgejo
-      tls: {}
-
-    # Frigate — path-based, autenticacao obrigatoria (sem login embutido)
-    frigate:
-      rule: "PathPrefix(`/frigate`)"
-      priority: 10
-      entryPoints:
-        - websecure
-      middlewares:
-        - frigate-strip
-        - frigate-headers
-        - frigate-auth
-      service: frigate
-      tls: {}
-
-    # Immich — host-based (nao suporta subpath); acesso: https://photos.home
-    # DNS local obrigatorio (dnsmasq no OpenWrt ou /etc/hosts do dispositivo)
-    immich:
-      rule: "Host(`photos.home`)"
-      priority: 10
-      entryPoints:
-        - websecure
-      service: immich
-      tls: {}
-
-    # Home Assistant — default (lowest priority)
     homeassistant:
-      rule: "PathPrefix(`/`)"
-      priority: 1
+      rule: "Host(`ha.home`)"
       entryPoints:
         - websecure
       middlewares:
         - ha-headers
       service: homeassistant
+      tls: {}
+
+    grafana:
+      rule: "Host(`grafana.home`)"
+      entryPoints:
+        - websecure
+      service: grafana
+      tls: {}
+
+    forgejo:
+      rule: "Host(`git.home`)"
+      entryPoints:
+        - websecure
+      service: forgejo
+      tls: {}
+
+    frigate:
+      rule: "Host(`frigate.home`)"
+      entryPoints:
+        - websecure
+      middlewares:
+        - frigate-headers
+        - frigate-auth
+      service: frigate
+      tls: {}
+
+    immich:
+      rule: "Host(`photos.home`)"
+      entryPoints:
+        - websecure
+      service: immich
       tls: {}
 
   services:
