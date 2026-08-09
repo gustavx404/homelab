@@ -1,67 +1,67 @@
 # homelab
 
-Infraestrutura auto-hospedada — Docker Compose, 11 servicos, rede zero-confianca.
+Infraestrutura auto-hospedada — Docker Compose, 11 services, rede zero-confianca.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/gustavx404/homelab/ci.yaml?style=flat-square&label=ci&color=10b981)](https://github.com/gustavx404/homelab/actions)
-[![servicos](https://img.shields.io/badge/servicos-11-3b82f6?style=flat-square)]()
+[![services](https://img.shields.io/badge/services-11-3b82f6?style=flat-square)]()
 [![suricata](https://img.shields.io/badge/suricata-8-6b7280?style=flat-square)]()
 [![secrets](https://img.shields.io/badge/secrets-sops%2Bage-6b7280?style=flat-square)]()
 
 ---
 
-## Arquitetura
+## Architecture
 
 ```
 Internet → OpenWrt (borda + CrowdSec bouncer)
                 │
                 ▼  :80 :443
            ┌─────────────┐
-           │  Traefik v3  │  proxy reverso · roteamento por path
+           │  Traefik v3  │  reverse proxy · path-based routing
            │  /         HA│
            │  /grafana    │
            │  /git        │
            └──────┬───────┘
-                  │  rede backend (br-homelab)
+                  │  backend network (br-homelab)
      ┌────────┬───┴───┬────────┬────────┬────────┐
      ▼        ▼       ▼        ▼        ▼        ▼
   mariadb  grafana prometheus forgejo  mumble  crowdsec
      └────────┴───────┴───┬────┴────────┴────│───┘
-                     rede host               ▼
+                     host network             ▼
                suricata · esphome       LAPI :8080
                (eno1)     (:6052)       (→ OpenWrt)
 ```
 
 - Traefik e o unico ponto de entrada HTTP/S. Todos os apps web passam por ele.
-- Suricata e ESPHome usam `network_mode: host` por necessidade (captura de pacotes / mDNS).
+- Suricata e ESPHome usam `network_mode: host` por necessidade (packet capture / mDNS).
 - CrowdSec envia decisoes de ban para o OpenWrt na borda da rede.
 
 ---
 
-## Instalacao
+## Quick Start
 
 ```bash
-# dependencias
+# dependencies
 curl -fsSL https://get.docker.com -o get-docker.sh && sudo sh ./get-docker.sh
 sudo apt install -y docker-compose-v2 age yamllint
 curl -LO https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.linux.amd64
 sudo install -m 755 sops-v3.13.3.linux.amd64 /usr/local/bin/sops
 
-# gerar chave age e copiar a chave publica para .sops.yaml
+# generate age key and copy public key to .sops.yaml
 age-keygen -o ~/.config/sops/age/keys.txt
 
-# editar secrets com valores reais
+# edit secrets with real values
 sops compose/sops-secrets.yaml
 
-# decriptar secrets e gerar .env
+# decrypt and generate .env
 bash scripts/decrypt-secrets.sh
 
-# subir todos os stacks
+# deploy all stacks
 docker compose -f compose/compose.yaml up -d
 ```
 
-**Acesso** — roteamento por path, sem dependencia de DNS. TLS auto-assinado.
+**Access** — path-based routing, zero DNS dependency. Self-signed TLS.
 
-| path | servico |
+| path | service |
 |------|---------|
 | `/` | Home Assistant |
 | `/grafana/` | Grafana |
@@ -69,13 +69,13 @@ docker compose -f compose/compose.yaml up -d
 
 ---
 
-## Servicos
+## Services
 
-| stack | servico | imagem | acesso |
-|-------|---------|--------|--------|
+| stack | service | image | access |
+|-------|---------|-------|--------|
 | home | traefik | `v3.3` | `80,443` |
-| home | homeassistant | `stable` | interno |
-| home | mariadb | `lts` | interno |
+| home | homeassistant | `stable` | internal |
+| home | mariadb | `lts` | internal |
 | home | esphome | `stable` | `6052` host |
 | security | suricata | `latest` | host |
 | security | crowdsec | `latest` | `8080` lapi |
@@ -83,32 +83,32 @@ docker compose -f compose/compose.yaml up -d
 | services | mumble | `latest` | `64738` tcp/udp |
 | services | kali | `rolling` | cli |
 | monitoring | prometheus | `v3.4.0` | `127.0.0.1:9090` |
-| monitoring | grafana | `11.6.0` | interno |
+| monitoring | grafana | `11.6.0` | internal |
 
 ---
 
-## Estrutura
+## Structure
 
 ```
 compose/
-├── compose.yaml        principal (include)
-├── network.yaml        rede + secrets
+├── compose.yaml        master (include)
+├── network.yaml        network + secrets
 ├── home.yaml           mariadb · homeassistant · esphome
 ├── security.yaml       suricata · crowdsec
 ├── monitoring.yaml     prometheus · grafana
 ├── services.yaml       traefik · forgejo · mumble · kali
 ├── .env.example        template
-└── sops-secrets.yaml   encriptado (SOPS + age)
+└── sops-secrets.yaml   encrypted (SOPS + age)
 
-traefik/                config do proxy reverso
-suricata/               config IDS + 12 assinaturas
+traefik/                reverse proxy config
+suricata/               IDS config + 12 signatures
 crowdsec/               acquis · profiles · scenarios · whitelist
-homeassistant/          config HA + dispositivos ESPHome
-monitoring/             configs prometheus + grafana
+homeassistant/          HA config + ESPHome devices
+monitoring/             prometheus + grafana configs
 scripts/                decrypt-secrets · update-suricata-rules
 ```
 
-Stacks individuais:
+Individual stacks:
 
 ```bash
 docker compose -f compose/network.yaml -f compose/security.yaml up -d
@@ -119,12 +119,12 @@ docker compose -f compose/network.yaml -f compose/home.yaml up -d
 
 ## IDS/IPS
 
-Suricata monitora `eno1` e `br-homelab`. CrowdSec processa `eve.json` em tempo real. Dois alertas em 60 segundos disparam um ban de 6 horas, propagado para o OpenWrt na borda.
+Suricata monitors `eno1` and `br-homelab`. CrowdSec reads `eve.json` in real time. Two alerts within 60 seconds trigger a 6-hour ban, propagated to OpenWrt at the network edge.
 
-| assinatura | limite |
-|-----------|--------|
-| icmp echo | informativo |
-| varredura icmp | 10 / 30s |
+| signature | threshold |
+|-----------|-----------|
+| icmp echo | info only |
+| icmp sweep | 10 / 30s |
 | syn scan | 5 / 3s |
 | connect scan | 5 / 3s |
 | null scan | 3 / 10s |
@@ -136,46 +136,46 @@ Suricata monitora `eno1` e `br-homelab`. CrowdSec processa `eve.json` em tempo r
 | path traversal | — |
 | sql injection | — |
 
-Perfis CrowdSec — cenario `homelab/scan-detection`:
+CrowdSec profiles — scenario `homelab/scan-detection`:
 
-| gatilho | duracao |
-|---------|---------|
-| primeira deteccao | 6 h |
-| padrao de scan | 24 h |
-| reincidente (>=3) | 48 h |
+| trigger | duration |
+|---------|----------|
+| first detection | 6 h |
+| scan pattern | 24 h |
+| repeat (>=3) | 48 h |
 
 ```bash
-docker exec crowdsec cscli decisions list      # bans ativos
-docker exec kali nmap -sS -p 1-100 <host>     # teste
+docker exec crowdsec cscli decisions list      # active bans
+docker exec kali nmap -sS -p 1-100 <host>     # test
 ```
 
 ---
 
-## Portas expostas
+## Exposed Ports
 
-| porta | servico | motivo |
-|-------|---------|--------|
-| `22` | ssh | acesso administrativo |
-| `80,443` | traefik | unico ponto de entrada |
+| port | service | reason |
+|------|---------|--------|
+| `22` | ssh | admin access |
+| `80,443` | traefik | single entry point |
 | `2222` | forgejo ssh | git push/pull |
-| `6052` | esphome | rede host (mDNS) |
-| `64738` | mumble | protocolo VoIP |
-| `8080` | crowdsec lapi | bouncer OpenWrt |
+| `6052` | esphome | host network (mDNS) |
+| `64738` | mumble | VoIP protocol |
+| `8080` | crowdsec lapi | OpenWrt bouncer |
 
-Prometheus vinculado apenas a `127.0.0.1`. Nenhum app web exposto diretamente — tudo passa pelo Traefik.
+Prometheus bound to `127.0.0.1` only. Zero web apps exposed directly — everything through Traefik.
 
 ---
 
-## Seguranca
+## Security
 
-- todos os apps web acessiveis apenas via Traefik (HA, Grafana, Forgejo)
-- prometheus vinculado apenas a `127.0.0.1` (metricas internas)
-- mariadb isolado na rede `backend`
-- secrets encriptados com SOPS + age (`.env` gitignored)
-- `network_mode: host` apenas onde necessario
-- `no-new-privileges:true` nos containers host
-- healthchecks e resource limits em todos os containers
-- CI: yamllint, compose-validate, trivy config, trivy cve (7 imagens)
+- all web apps accessible only via Traefik (HA, Grafana, Forgejo)
+- prometheus bound to `127.0.0.1` only (internal metrics)
+- mariadb isolated on `backend` network
+- secrets encrypted with SOPS + age (`.env` gitignored)
+- `network_mode: host` only where necessary
+- `no-new-privileges:true` on host containers
+- healthchecks and resource limits on all containers
+- CI: yamllint, compose-validate, trivy config, trivy cve (7 images)
 
 ---
 
@@ -188,10 +188,10 @@ cp ~/.config/sops/age/keys.txt backup-age-key.txt
 
 ---
 
-## Creditos
+## Credits
 
-| projeto | autor |
-|---------|-------|
+| project | author |
+|---------|--------|
 | [EASUN SMG II 11Kw ESPHome](https://github.com/robgt978/Easun-SMG-II-11Kw-esphome-) | robgt978 |
 | [Suricata](https://suricata.io/) | OISF |
 | [CrowdSec](https://github.com/crowdsecurity/crowdsec) | CrowdSec |
