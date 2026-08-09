@@ -32,6 +32,7 @@ Internet → OpenWrt (borda + CrowdSec bouncer)
                      host network             ▼
                suricata · esphome       LAPI :8080
                (eno1)     (:6052)       (→ OpenWrt)
+               suricata-stats (backend, :8899 interno)
 ```
 
 - Traefik e o unico ponto de entrada HTTP/S. Todos os apps web passam por ele.
@@ -90,6 +91,7 @@ docker compose -f compose/compose.yaml up -d
 | home | mariadb | `lts` | interno |
 | home | esphome | `stable` | `6052` host |
 | security | suricata | `latest` | host |
+| security | suricata-stats | `python:3.13-alpine` | interno `8899` |
 | security | crowdsec | `latest` | `8080` lapi |
 | services | homepage | `latest` | interno |
 | services | forgejo | `16.0.2` | `2222` ssh |
@@ -112,7 +114,7 @@ compose/
 ├── compose.yaml        principal (include)
 ├── network.yaml        rede + secrets
 ├── home.yaml           mariadb · homeassistant · esphome
-├── security.yaml       suricata · crowdsec
+├── security.yaml       suricata · crowdsec · suricata-stats
 ├── monitoring.yaml     prometheus · grafana
 ├── media.yaml          frigate · immich (server/ml/redis/postgres)
 ├── services.yaml       traefik · forgejo · mumble · kali
@@ -125,7 +127,7 @@ suricata/               config IDS + 12 assinaturas
 crowdsec/               acquis · profiles · scenarios · whitelist
 homeassistant/          config HA + dispositivos ESPHome
 monitoring/             configs prometheus + grafana
-scripts/                decrypt-secrets · update-suricata-rules
+scripts/                decrypt-secrets · update-suricata-rules · suricata-stats
 ```
 
 Stacks individuais:
@@ -156,6 +158,12 @@ Suricata monitora `eno1` e `br-homelab`. CrowdSec processa `eve.json` em tempo r
 | ssh brute force | 8 / 30s |
 | path traversal | — |
 | sql injection | — |
+
+O dashboard (Homepage) mostra stats em tempo real do Suricata via `suricata-stats` (endpoint interno `:8899` que le o `eve.json`): uptime, pacotes, drops e total de alertas. Apos editar `suricata/suricata.yaml`, recrie o container:
+
+```bash
+docker compose -f compose/network.yaml -f compose/security.yaml up -d --force-recreate suricata
+```
 
 Perfis CrowdSec — cenario `homelab/scan-detection`:
 
@@ -196,6 +204,7 @@ Nenhum app web exposto diretamente — tudo passa pelo Traefik.
 - mariadb isolado na rede `backend`
 - secrets encriptados com SOPS + age (`.env` gitignored)
 - `network_mode: host` apenas onde necessario
+- `suricata-stats` le o `eve.json` somente-leitura (rede `backend`, porta interna, sem bind)
 - `no-new-privileges:true` nos containers host
 - healthchecks e resource limits em todos os containers
 - CI: yamllint, compose-validate, trivy config, trivy cve (12 imagens)

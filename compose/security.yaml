@@ -68,6 +68,32 @@ services:
       retries: 3
       start_period: 30s
 
+  suricata-stats:
+    image: python:3.13-alpine
+    container_name: suricata-stats
+    networks:
+      - backend
+    volumes:
+      - ../data/suricata:/data:ro
+      - ../scripts/suricata-stats.py:/app/suricata-stats.py:ro
+    command: ["python3", "/app/suricata-stats.py"]
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8899/stats || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
 volumes:
   crowdsec_data:
   crowdsec_webui_data:

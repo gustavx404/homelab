@@ -19,11 +19,18 @@
         description: Firmware ESP32
         server: docker
         container: esphome
+        widget:
+          type: esphome
+          url: http://192.168.20.189:6052
+          username: "{{HOMEPAGE_VAR_ESPHOME_USERNAME}}"
+          password: "{{HOMEPAGE_VAR_ESPHOME_PASSWORD}}"
 
     - MariaDB:
         icon: mariadb.png
         href: null
-        description: Banco de dados do HA
+        description: Banco de dados do HA — healthcheck ativo
+        server: docker
+        container: mariadb
 
 - Seguranca:
     - Suricata:

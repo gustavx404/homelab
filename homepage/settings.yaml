@@ -4,6 +4,10 @@ description: Infraestrutura auto-hospedada
 theme: dark
 color: slate
 cardBlur: md
+statusStyle: dot
+language: pt
+hideVersion: true
+disableIndexing: true
 
 headerStyle: clean
 layout:

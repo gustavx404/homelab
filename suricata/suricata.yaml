@@ -33,3 +33,8 @@ outputs:
         - http
         - dns
         - tls
+        - stats
+
+stats:
+  enabled: yes
+  interval: 30
