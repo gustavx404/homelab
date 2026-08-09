@@ -2,7 +2,7 @@ name: crowdsecurity/whitelists
 description: "Whitelist localhost and LAN gateway (router)"
 whitelist:
   reason: "private ipv4/ipv6 ip/ranges"
-  ip: 
+  ip:
     - "127.0.0.1"
     - "::1"
     - "192.168.20.1"
