@@ -22,10 +22,6 @@ http:
       stripPrefix:
         prefixes:
           - "/ha"
-    strip-grafana:
-      stripPrefix:
-        prefixes:
-          - "/grafana"
     strip-git:
       stripPrefix:
         prefixes:
@@ -164,14 +160,6 @@ http:
         - strip-ha
         - ha-headers
       service: homeassistant
-
-    funnel-grafana:
-      rule: "Host(`homelab.buru-eagle.ts.net`) && PathPrefix(`/grafana`)"
-      entryPoints:
-        - tailscale
-      middlewares:
-        - strip-grafana
-      service: grafana
 
     funnel-git:
       rule: "Host(`homelab.buru-eagle.ts.net`) && PathPrefix(`/git`)"
