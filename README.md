@@ -271,6 +271,8 @@ suricata/    IDS + 12 assinaturas
 crowdsec/    acquis · profiles · scenarios · whitelist · notifications
 homeassistant/  HA + ESPHome
 monitoring/  prometheus + grafana dashboards
+data/        volumes persistentes (mount de todos os containers; alvo do backup)
+.github/     CI (yamllint · compose validate · trivy config e imagem)
 scripts/     init-sops · decrypt-secrets · update-suricata-rules · suricata-stats
 ```
 
