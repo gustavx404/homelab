@@ -56,7 +56,7 @@
     }
   },
   "AllowFunnel": {
-    "${TS_CERT_DOMAIN}:443": true,
+    "${TS_CERT_DOMAIN}:443": false,
     "ha.${TS_CERT_DOMAIN}:443": false,
     "grafana.${TS_CERT_DOMAIN}:443": false,
     "git.${TS_CERT_DOMAIN}:443": false,

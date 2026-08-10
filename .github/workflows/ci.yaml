@@ -80,5 +80,5 @@ jobs:
           scan-type: image
           image-ref: ${{ matrix.image }}
           severity: CRITICAL
-          exit-code: 0
+          exit-code: 1
           ignore-unfixed: true
