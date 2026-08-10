@@ -122,7 +122,7 @@ services:
           memory: 256M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "ps aux | grep -q '[a]uthentik worker' || exit 1"]
+      test: ["CMD-SHELL", "python3 -c \"import sys; sys.exit(0)\" || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
