@@ -338,6 +338,41 @@ docker compose -f compose/compose.yaml up -d authentik
 Para usar como SSO: crie um provider OIDC no UI (Admin > Applications > Providers) e
 aponte o app (ex.: Grafana via `auth.oidc`).
 
+
+**Troubleshooting — redirect loop para /setup (HTTP 500)**:
+
+Sintoma: qualquer acesso a `homelab.buru-eagle.ts.net` redireciona para `/setup`
+e retorna `500 Internal Server Error` (`FlowNonApplicableException`).
+
+Causa: no upgrade para 2026.5.6 as flags passaram a ser tenant-based; o tenant
+`Default` (schema `public`) ficou com `flags = {}` — a flag `setup` se perdeu.
+Com `Setup.get() = False`, toda request a `/` cai em `/setup`, e o flow
+`initial-setup` esta travado (pos-setup), gerando o 500. O bootstrap
+(`system/bootstrap.yaml` + `AUTHENTIK_BOOTSTRAP_PASSWORD`) que deveria re-setar
+a flag falha com `KeyOf: admin-group` quando os objetos ja existem.
+
+Recovery (setar a flag de setup no tenant public):
+
+```bash
+docker exec authentik-server ak shell -c "from authentik.core.apps import Setup; Setup.set(True)"
+```
+
+Apos isso, o bootstrap passa a skipar (sem o erro KeyOf) e o login volta a
+responder 200. Se `akadmin` perdeu superuser no mesmo upgrade (grupo
+`authentik Admins` com `is_superuser=false`), restaurar com:
+
+```bash
+docker exec authentik-server ak shell -c "
+from authentik.core.models import User, Group
+g = Group.objects.get(name='authentik Admins'); g.is_superuser = True; g.save()
+u = User.objects.get(username='akadmin'); u.groups.add(g)
+"
+```
+
+> O erro `EntryInvalidError: KeyOf admin-group` (level critical) no boot do worker
+> e benigno uma vez que a flag `setup` esta setada — o signal de bootstrap
+> simplesmente skipa.
+
 ---
 ## Estrutura
 
