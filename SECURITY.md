@@ -55,3 +55,22 @@ diretamente. Nao exponha detalhes em issues publicas antes do fix.
 | Senha do admin do HA | semestral |
 | `HA_WEBHOOK_ID` | anual ou ao suspeitar de vazamento |
 | Chave age | imediatamente se qualquer copia for perdida/vazada |
+
+## Prevencao de leaks em commits
+
+Nunca coloque senhas, tokens ou API keys em mensagens de commit — o SOPS
+protege o conteudo dos arquivos, mas mensagens de commit sao texto plano
+permanente no historico.
+
+Instale o hook pre-commit p/ bloquear secrets acidentalmente:
+
+```bash
+cat > .git/hooks/commit-msg << 'HOOK'
+#!/bin/sh
+if grep -iE '(password|passwd|token|secret|apikey)[=: ]+[^ ]{6,}' "$1" | grep -viE 'exemplo|example|template|changeme'; then
+  echo "ERROR: possible secret in commit message" >&2
+  exit 1
+fi
+HOOK
+chmod +x .git/hooks/commit-msg
+```
