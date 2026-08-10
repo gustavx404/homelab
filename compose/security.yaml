@@ -89,7 +89,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 256M
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8899/stats')\" || exit 1"]
