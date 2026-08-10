@@ -1,0 +1,51 @@
+---
+# Vaultwarden stack: gerenciador de senhas (API compativel com Bitwarden) — https://vault.home
+# Banco: MariaDB central (database.yaml) — usuario/bancos criados em compose/database-init/
+# Acesso exclusivo via Traefik (sem portas expostas). Senhas via Docker secrets (NUNCA env vars).
+# Setup (1x): sops compose/sops-secrets.yaml -> VAULTWARDEN_* ; bash scripts/decrypt-secrets.sh
+
+services:
+  vaultwarden:
+    image: docker.io/vaultwarden/server:1.37.1
+    container_name: vaultwarden
+    networks:
+      - backend
+    volumes:
+      - ../data/vaultwarden:/data
+      - /etc/localtime:/etc/localtime:ro
+    # SSO discovery via Traefik sem depender do DNS .home na LAN (host-gateway = IP do host)
+    extra_hosts:
+      - "authentik.home:host-gateway"
+    environment:
+      - TZ=${TZ}
+      - DOMAIN=https://vault.home
+      - SIGNUPS_ALLOWED=false
+      - ADMIN_TOKEN_FILE=/run/secrets/VAULTWARDEN_ADMIN_TOKEN
+      - DATABASE_URL_FILE=/run/secrets/VAULTWARDEN_DATABASE_URL
+      # SSO via Authentik (OIDC). Provider criado por scripts/authentik-oidc-setup.sh
+      # Callback: https://vault.home/identity/connect/oidc-signin (auto a partir do DOMAIN)
+      - SSO_ENABLED=true
+      - SSO_AUTHORITY=https://authentik.home/application/o/vaultwarden/
+      - SSO_SCOPES=openid profile email offline_access
+      - SSO_CLIENT_ID=${VAULTWARDEN_OIDC_CLIENT_ID:?VAULTWARDEN_OIDC_CLIENT_ID required}
+      - SSO_CLIENT_SECRET_FILE=/run/secrets/VAULTWARDEN_OIDC_CLIENT_SECRET
+    secrets:
+      - VAULTWARDEN_ADMIN_TOKEN
+      - VAULTWARDEN_DATABASE_URL
+      - VAULTWARDEN_OIDC_CLIENT_SECRET
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s

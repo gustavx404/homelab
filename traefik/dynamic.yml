@@ -1,5 +1,5 @@
 # Traefik dynamic configuration — hostname-based routing
-# DNS local: 192.168.20.189 ha.home grafana.home git.home frigate.home authentik.home
+# DNS local: 192.168.20.189 ha.home grafana.home git.home frigate.home authentik.home photos.home vault.home
 # DNS Tailscale: ha.<tailnet>.ts.net grafana.<tailnet>.ts.net etc. (serve config)
 
 http:
@@ -60,6 +60,20 @@ http:
       service: frigate
       tls: {}
 
+    immich:
+      rule: "Host(`photos.home`) || HostRegexp(`^photos\\..+\\.ts\\.net$`)"
+      entryPoints:
+        - websecure
+      service: immich
+      tls: {}
+
+    vaultwarden:
+      rule: "Host(`vault.home`) || HostRegexp(`^vault\\..+\\.ts\\.net$`)"
+      entryPoints:
+        - websecure
+      service: vaultwarden
+      tls: {}
+
     # Routers p/ o entrypoint tailscale (sem tls): o Tailscale Serve/Funnel ja
     # termina o TLS e faz proxy HTTP em 127.0.0.1:8181. Routers com tls:{} so
     # atendem trafego TLS e ignorariam o HTTP plain, por isso sao separados.
@@ -98,6 +112,18 @@ http:
         - frigate-auth
       service: frigate
 
+    immich-ts:
+      rule: "HostRegexp(`^photos\\..+\\.ts\\.net$`)"
+      entryPoints:
+        - tailscale
+      service: immich
+
+    vaultwarden-ts:
+      rule: "HostRegexp(`^vault\\..+\\.ts\\.net$`)"
+      entryPoints:
+        - tailscale
+      service: vaultwarden
+
   services:
     homeassistant:
       loadBalancer:
@@ -125,3 +151,15 @@ http:
       loadBalancer:
         servers:
           - url: "http://frigate:8971"
+
+    immich:
+      loadBalancer:
+        servers:
+          - url: "http://immich-server:2283"
+        passHostHeader: true
+
+    vaultwarden:
+      loadBalancer:
+        servers:
+          - url: "http://vaultwarden:80"
+        passHostHeader: true

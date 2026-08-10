@@ -7,6 +7,8 @@ networks:
     driver_opts:
       com.docker.network.bridge.name: br-homelab
 
+# Secrets sao sourced do .env (gerado pelo sops). Containers recebem o valor via
+# /run/secrets/<NOME> — nunca via env var. Apps usam *_FILE env var p/ ler o arquivo.
 secrets:
   MARIADB_ROOT_PASSWORD:
     environment: MARIADB_ROOT_PASSWORD
@@ -16,3 +18,13 @@ secrets:
     environment: MARIADB_USER
   MARIADB_PASSWORD:
     environment: MARIADB_PASSWORD
+  IMMICH_DB_PASSWORD:
+    environment: IMMICH_DB_PASSWORD
+  IMMICH_REDIS_PASSWORD:
+    environment: IMMICH_REDIS_PASSWORD
+  VAULTWARDEN_ADMIN_TOKEN:
+    environment: VAULTWARDEN_ADMIN_TOKEN
+  VAULTWARDEN_DATABASE_URL:
+    environment: VAULTWARDEN_DATABASE_URL
+  VAULTWARDEN_OIDC_CLIENT_SECRET:
+    environment: VAULTWARDEN_OIDC_CLIENT_SECRET

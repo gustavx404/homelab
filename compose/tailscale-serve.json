@@ -1,15 +1,67 @@
-{"TCP": {"443": {"HTTPS": true}},
- "Web": {
-   "${TS_CERT_DOMAIN}:443":              {"Handlers": {"/": {"Proxy": "http://127.0.0.1:9100"}}},
-   "ha.${TS_CERT_DOMAIN}:443":         {"Handlers": {"/": {"Proxy": "http://127.0.0.1:8181"}}},
-   "grafana.${TS_CERT_DOMAIN}:443":    {"Handlers": {"/": {"Proxy": "http://127.0.0.1:8181"}}},
-   "git.${TS_CERT_DOMAIN}:443":        {"Handlers": {"/": {"Proxy": "http://127.0.0.1:8181"}}},
-   "frigate.${TS_CERT_DOMAIN}:443":    {"Handlers": {"/": {"Proxy": "http://127.0.0.1:8181"}}}
- },
- "AllowFunnel": {
-   "${TS_CERT_DOMAIN}:443": true,
-   "ha.${TS_CERT_DOMAIN}:443": false,
-   "grafana.${TS_CERT_DOMAIN}:443": false,
-   "git.${TS_CERT_DOMAIN}:443": false,
-   "frigate.${TS_CERT_DOMAIN}:443": false
- }}
+{
+  "TCP": {
+    "443": {
+      "HTTPS": true
+    }
+  },
+  "Web": {
+    "${TS_CERT_DOMAIN}:443": {
+      "Handlers": {
+        "/": {
+          "Proxy": "http://127.0.0.1:9100"
+        }
+      }
+    },
+    "ha.${TS_CERT_DOMAIN}:443": {
+      "Handlers": {
+        "/": {
+          "Proxy": "http://127.0.0.1:8181"
+        }
+      }
+    },
+    "grafana.${TS_CERT_DOMAIN}:443": {
+      "Handlers": {
+        "/": {
+          "Proxy": "http://127.0.0.1:8181"
+        }
+      }
+    },
+    "git.${TS_CERT_DOMAIN}:443": {
+      "Handlers": {
+        "/": {
+          "Proxy": "http://127.0.0.1:8181"
+        }
+      }
+    },
+    "frigate.${TS_CERT_DOMAIN}:443": {
+      "Handlers": {
+        "/": {
+          "Proxy": "http://127.0.0.1:8181"
+        }
+      }
+    },
+    "photos.${TS_CERT_DOMAIN}:443": {
+      "Handlers": {
+        "/": {
+          "Proxy": "http://127.0.0.1:8181"
+        }
+      }
+    },
+    "vault.${TS_CERT_DOMAIN}:443": {
+      "Handlers": {
+        "/": {
+          "Proxy": "http://127.0.0.1:8181"
+        }
+      }
+    }
+  },
+  "AllowFunnel": {
+    "${TS_CERT_DOMAIN}:443": true,
+    "ha.${TS_CERT_DOMAIN}:443": false,
+    "grafana.${TS_CERT_DOMAIN}:443": false,
+    "git.${TS_CERT_DOMAIN}:443": false,
+    "frigate.${TS_CERT_DOMAIN}:443": false,
+    "photos.${TS_CERT_DOMAIN}:443": false,
+    "vault.${TS_CERT_DOMAIN}:443": false
+  }
+}

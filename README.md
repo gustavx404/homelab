@@ -2,13 +2,13 @@
   <h1 align="center">homelab</h1>
   <p align="center">
     <b>Infraestrutura auto-hospedada</b><br>
-    Docker Compose &middot; 19 servicos &middot; Zero-confianca
+    Docker Compose &middot; 24 servicos &middot; Zero-confianca
   </p>
 </p>
 
 <p align="center">
   <a href="https://github.com/gustavx404/homelab/actions"><img src="https://github.com/gustavx404/homelab/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/servicos-19-3b82f6?style=flat-square" alt="19 servicos">
+  <img src="https://img.shields.io/badge/servicos-24-3b82f6?style=flat-square" alt="24 servicos">
   <img src="https://img.shields.io/badge/suricata-12_asssinaturas-6b7280?style=flat-square" alt="Suricata 12 assinaturas">
   <img src="https://img.shields.io/badge/secrets-sops%2Bage-6b7280?style=flat-square" alt="SOPS + age">
 </p>
@@ -35,7 +35,7 @@
 - [Acesso Remoto](#acesso-remoto-tailscale) — Tailscale (WireGuard mesh)
 - [Apple](#apple) — HomeKit, Siri, Companion App
 - [Instalacao](#instalacao) — do zero ao ar em 5 minutos
-- [Servicos](#servicos) — catalogo completo com 19 containers
+- [Servicos](#servicos) — catalogo completo com 24 containers
 - [Autenticacao (Authentik)](#autenticacao-authentik) — IdP/SSO + sidecar ScaleTail
 - [Banco de dados](#banco-de-dados-mariadb) — MariaDB central
 - [Estrutura](#estrutura) — arvore de diretorios
@@ -87,6 +87,11 @@ flowchart TB
             Redis["Redis"]
             Worker["Authentik worker"]
             TsAuth["ts-authentik<br/>sidecar"]
+            Immich["Immich<br/>photos.home"]
+            ImmichML["immich-machine-learning"]
+            ImmichPG["immich-postgres"]
+            ImmichRedis["immich-redis"]
+            Vault["Vaultwarden<br/>vault.home"]
         end
 
         subgraph HostNet["host network"]
@@ -107,6 +112,12 @@ flowchart TB
     Traefik --> Grafana
     Traefik --> Forgejo
     Traefik --> Frigate
+    Traefik -->|"photos.home"| Immich
+    Immich -->|"pgvector"| ImmichPG
+    Immich --> ImmichRedis
+    Immich --> ImmichML
+    Traefik -->|"vault.home"| Vault
+    Vault -->|"vault"| MariaDB
     CrowdSec -->|"LAPI :8080"| Bouncer
     HA -->|"recorder"| MariaDB
     Forgejo -->|"repo data"| MariaDB
@@ -123,10 +134,10 @@ flowchart TB
 |---|---|
 | Traefik | Unico ponto de entrada HTTP/S — roteia `*.home` por hostname |
 | Tailscale | Mesh WireGuard — iPhone acessa tudo de qualquer lugar, sem portas abertas |
-| MariaDB | Banco central — HA (recorder), Forgejo, Grafana, CrowdSec, Mumble |
+| MariaDB | Banco central — HA (recorder), Forgejo, Grafana, CrowdSec, Mumble, Vaultwarden |
 | Suricata + CrowdSec | IDS/IPS — detecta scans, aplica bans, notifica via HA webhook |
 | Prometheus + Grafana | Metricas e dashboards de todos os servicos |
-| Authentik | IdP/SSO — autentica os servicos via OIDC (admin akadmin) |
+| Authentik | IdP/SSO — autentica os servicos via OIDC (admin akadmin) — Grafana, Forgejo, Immich, Vaultwarden |
 | ts-authentik | Sidecar ScaleTail — URL propria https://authentik.<tailnet>.ts.net (Tailscale Serve) |
 
 ---
@@ -243,6 +254,8 @@ qualquer dispositivo no tailnet sem VPN extra, sem porta aberta, sem DNS local.
 | `git.home` | Forgejo | :white_check_mark: | `git.homelab.<tailnet>.ts.net` |
 | `frigate.home` | Frigate (NVR) | :white_check_mark: | `frigate.homelab.<tailnet>.ts.net` |
 | `authentik.home` | Authentik (IdP/SSO) | :white_check_mark: | `authentik.homelab.<tailnet>.ts.net` |
+| `photos.home` | Immich (fotos/videos) | :white_check_mark: | `photos.homelab.<tailnet>.ts.net` |
+| `vault.home` | Vaultwarden (senhas) | :white_check_mark: | `vault.homelab.<tailnet>.ts.net` |
 | `mumble://100.73.57.112:64738` | Mumble (VoIP) | Tailscale IP | direto (protocolo proprio) |
 
 > Para acesso **publico** (internet, sem Tailscale): habilite Funnel no
@@ -269,6 +282,11 @@ qualquer dispositivo no tailnet sem VPN extra, sem porta aberta, sem DNS local.
 | monitoring | prometheus | `v3.4.0` | `127.0.0.1:9090` | backend |
 | monitoring | grafana | `11.6.0` | `127.0.0.1:3000` | backend |
 | media | frigate | `stable` | `:8554,8555` | backend |
+| immich | immich-server | `v3.1.0` | `photos.home` | backend |
+| immich | immich-machine-learning | `v3.1.0` | interno | backend |
+| immich | immich-postgres | `14-vectorchord` | interno | backend |
+| immich | immich-redis | `valkey:9` | interno | backend |
+| vaultwarden | vaultwarden | `1.37.1` | `vault.home` | backend |
 | network | tailscale | `latest` | subnet router | host |
 | auth | postgres | `16-alpine` | interno | backend |
 | auth | redis | `7-alpine` | interno | backend |
@@ -286,7 +304,7 @@ Provisionamento em duas camadas no primeiro boot (datadir vazio):
 1. **Entrypoint do MariaDB**: cria o banco `homeassistant` e usuario `ha_user`
    via secrets Docker (`MARIADB_DATABASE`, `MARIADB_USER`, `MARIADB_PASSWORD`)
 2. **Init script** (`database-init/01-create-app-databases.sh`): cria os bancos
-   e usuarios de Forgejo, Grafana, CrowdSec e Mumble
+   e usuarios de Forgejo, Grafana, CrowdSec, Mumble e Vaultwarden
 
 | app | banco | usuario | secret SOPS |
 |---|---|---|---|
@@ -296,6 +314,7 @@ Provisionamento em duas camadas no primeiro boot (datadir vazio):
 | Grafana | grafana | grafana | `GRAFANA_DB_PASSWORD` |
 | CrowdSec | crowdsec | crowdsec | `CROWDSEC_DB_PASSWORD` |
 | Mumble (murmur) | mumble | mumble | `MUMBLE_DB_PASSWORD` |
+| Vaultwarden | vaultwarden | vaultwarden | `VAULTWARDEN_DB_PASSWORD` |
 
 > Senhas repassadas como env var no compose. HA constroi a connection string
 > internamente (`ha-entrypoint.sh`). Root password via Docker secret (`_FILE`),
@@ -373,6 +392,62 @@ Ja configurado no `compose/monitoring.yaml`. Falta criar o provider no Authentik
    - **Client ID/Secret**: do sops (`FORGEJO_OIDC_CLIENT_ID/SECRET`)
    - **OpenID Connect Auto Discovery URL**: `https://authentik.home/application/o/forgejo/.well-known/openid-configuration`
 
+### SSO — Immich com Authentik
+
+O Immich aceita OIDC nativo (`IMMICH_OIDC_*` no `compose/immich.yaml`). Setup:
+
+```bash
+bash scripts/authentik-oidc-setup.sh   # cria provider + app no Authentik (idempotente)
+# copie os Client ID/Secret impressos para o sops:
+sops compose/sops-secrets.yaml         # IMMICH_OIDC_CLIENT_ID / IMMICH_OIDC_CLIENT_SECRET
+bash scripts/decrypt-secrets.sh
+docker compose -f compose/compose.yaml up -d immich-server
+```
+
+Provider criado automaticamente com:
+- **Redirect URIs**: `https://photos.home/auth/login`, `https://photos.home/user-settings`,
+  `app.immich:///oauth-callback` (mobile)
+- **Scopes**: openid profile email | **Signing**: RS256 (chave padrao do Authentik)
+- **Access token**: 10min (evita colisao com a janela de 5min do cliente)
+
+O `IMMICH_OIDC_ISSUER_URL` ja aponta para
+`https://authentik.home/application/o/immich/` e o container resolve `authentik.home`
+via `extra_hosts` (Traefik), sem depender do DNS `.home` da LAN. Para alterar
+(Authentik > System > OAuth), edite o compose e recrie o container.
+
+### SSO — Vaultwarden com Authentik
+
+Vaultwarden suporta OIDC via `SSO_*` (callback auto-gerado a partir do `DOMAIN`).
+
+```bash
+bash scripts/authentik-oidc-setup.sh   # cria provider + app no Authentik (idempotente)
+# copie os Client ID/Secret impressos para o sops:
+sops compose/sops-secrets.yaml         # VAULTWARDEN_OIDC_CLIENT_ID / VAULTWARDEN_OIDC_CLIENT_SECRET
+bash scripts/decrypt-secrets.sh
+docker compose -f compose/compose.yaml up -d vaultwarden
+```
+
+Provider criado automaticamente com:
+- **Redirect URI**: `https://vault.home/identity/connect/oidc-signin`
+- **Scopes**: openid profile email offline_access (necessario para refresh token)
+- **Access token**: 10min (o default de 5min do Authentik colide com a deteccao
+  de expiracao de 5min do cliente Bitwarden — se re-criar o provider pela UI,
+  ajuste em Advanced protocol settings)
+
+No `compose/vaultwarden.yaml`: `SSO_AUTHORITY` aponta para
+`https://authentik.home/application/o/vaultwarden/` (trailing `/` importante),
+`SSO_CLIENT_SECRET` via Docker secret, e `extra_hosts` resolve `authentik.home`
+via Traefik. A master password continua sendo exigida pelo cofre (por design).
+
+> **Certificado TLS do `.home`**: o Traefik serve o certificado padrao
+> auto-assinado para dominios `.home` (nao e possivel Let's Encrypt p/ TLD
+> inexistente). O discovery OIDC entre containers e o fluxo no browser funcionam,
+> mas clientes validam o certificado do issuer — para remover o aviso de
+> certificado, configure um CA interno (ex.: `mkcert`) servido pelo Traefik
+> (`tls.certificates` em `traefik/dynamic.yml`) e monte a CA nos containers
+> (`SSL_CERT_FILE`/`NODE_EXTRA_CA_CERTS`). Isso afeta igualmente o SSO ja
+> documentado do Grafana e do Forgejo.
+
 
 **Troubleshooting — redirect loop para /setup (HTTP 500)**:
 
@@ -422,6 +497,8 @@ compose/
 ├── security.yaml          suricata · crowdsec · suricata-stats
 ├── monitoring.yaml        prometheus · grafana
 ├── media.yaml             frigate (NVR)
+├── immich.yaml            immich (fotos) + postgres/valkey proprios
+├── vaultwarden.yaml       vaultwarden (senhas, MariaDB central)
 ├── services.yaml          traefik · forgejo · mumble · kali
 ├── authentik.yaml        authentik (IdP/SSO) + sidecar ScaleTail
 ├── authentik-serve.json  serve config do sidecar (ScaleTail)
@@ -437,7 +514,7 @@ homeassistant/  HA + ESPHome
 monitoring/  prometheus + grafana dashboards
 data/        volumes persistentes (mount de todos os containers; alvo do backup)
 .github/     CI (yamllint · compose validate · trivy config e imagem)
-scripts/     init-sops · decrypt-secrets · update-suricata-rules · suricata-stats · mumble-setup
+scripts/     init-sops · decrypt-secrets · authentik-oidc-setup · update-suricata-rules · suricata-stats · mumble-setup
 ```
 
 Stacks podem subir individualmente com `compose/network.yaml` (obrigatorio) +
@@ -534,6 +611,8 @@ Conectar como SuperUser p/ administrar:
 - Tailscale: auth key ephemeral, subnet routes aprovadas manualmente
 - Authentik: secrets via sops (AUTHENTIK_*), PostgreSQL dedicado sem porta no host,
   redis isolado na rede backend, analytics e error-reporting desabilitados
+- Immich/Vaultwarden: senhas (DB, redis, admin token, OIDC client secret) via Docker secrets
+  (`_FILE`/`/run/secrets`), nunca env vars; `extra_hosts` limita o SSO ao Traefik
 
 ### Portas expostas
 

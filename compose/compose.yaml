@@ -12,4 +12,6 @@ include:
   - media.yaml
   - services.yaml
   - authentik.yaml
+  - immich.yaml
+  - vaultwarden.yaml
   - tailscale.yaml
