@@ -8,6 +8,8 @@ services:
     entrypoint: ["/ha-entrypoint.sh"]
     networks:
       - backend
+    ports:
+      - "172.19.0.1:8123:8123"
     volumes:
       - ../data/homeassistant:/config
       - ../homeassistant/custom_components:/config/custom_components:ro
@@ -54,6 +56,8 @@ services:
     hostname: ha
     networks:
       - backend
+    extra_hosts:
+      - "host:172.19.0.1"
     volumes:
       - ../data/ts-homeassistant:/var/lib/tailscale
       - ../compose/ha-serve.json:/config/serve.json:ro
