@@ -338,6 +338,41 @@ docker compose -f compose/compose.yaml up -d authentik
 Para usar como SSO: crie um provider OIDC no UI (Admin > Applications > Providers) e
 aponte o app (ex.: Grafana via `auth.oidc`).
 
+### SSO — Grafana com Authentik
+
+Ja configurado no `compose/monitoring.yaml`. Falta criar o provider no Authentik:
+
+1. Authentik UI > Admin > Applications > Providers > Create > OAuth2/OpenID
+   - **Name**: Grafana
+   - **Client type**: Confidential
+   - **Redirect URI**: `https://grafana.home/login/generic_oauth`
+   - **Scopes**: openid profile email
+
+2. Em Applications > Create > Link ao provider Grafana
+
+3. Copie **Client ID** e **Client Secret** p/ o sops:
+   ```bash
+   sops compose/sops-secrets.yaml
+   # GRAFANA_OIDC_CLIENT_ID: <client_id>
+   # GRAFANA_OIDC_CLIENT_SECRET: <client_secret>
+   bash scripts/decrypt-secrets.sh
+   docker compose -f compose/compose.yaml up -d grafana
+   ```
+
+### SSO — Forgejo com Authentik
+
+1. Authentik UI > Admin > Applications > Providers > OAuth2/OpenID
+   - **Name**: Forgejo
+   - **Client type**: Confidential
+   - **Redirect URI**: `https://git.home/user/oauth2/authentik/callback`
+   - **Scopes**: openid profile email
+
+2. Em Forgejo (Settings > Authentication Sources > Add):
+   - **Type**: OAuth2 | **Name**: Authentik
+   - **OAuth2 Provider**: OpenID Connect
+   - **Client ID/Secret**: do sops (`FORGEJO_OIDC_CLIENT_ID/SECRET`)
+   - **OpenID Connect Auto Discovery URL**: `https://authentik.home/application/o/forgejo/.well-known/openid-configuration`
+
 
 **Troubleshooting — redirect loop para /setup (HTTP 500)**:
 
