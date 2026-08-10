@@ -2,13 +2,13 @@
   <h1 align="center">homelab</h1>
   <p align="center">
     <b>Infraestrutura auto-hospedada</b><br>
-    Docker Compose &middot; 14 servicos &middot; Zero-confianca
+    Docker Compose &middot; 19 servicos &middot; Zero-confianca
   </p>
 </p>
 
 <p align="center">
   <a href="https://github.com/gustavx404/homelab/actions"><img src="https://github.com/gustavx404/homelab/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/servicos-14-3b82f6?style=flat-square" alt="14 servicos">
+  <img src="https://img.shields.io/badge/servicos-19-3b82f6?style=flat-square" alt="19 servicos">
   <img src="https://img.shields.io/badge/suricata-12_asssinaturas-6b7280?style=flat-square" alt="Suricata 12 assinaturas">
   <img src="https://img.shields.io/badge/secrets-sops%2Bage-6b7280?style=flat-square" alt="SOPS + age">
 </p>
@@ -22,6 +22,9 @@
   <img src="https://img.shields.io/badge/Prometheus-E6522C?style=flat-square&logo=prometheus&logoColor=white" alt="Prometheus">
   <img src="https://img.shields.io/badge/Grafana-F46800?style=flat-square&logo=grafana&logoColor=white" alt="Grafana">
   <img src="https://img.shields.io/badge/MariaDB-003545?style=flat-square&logo=mariadb&logoColor=white" alt="MariaDB">
+  <img src="https://img.shields.io/badge/Authentik-FD4B2D?style=flat-square&logo=authentik&logoColor=white" alt="Authentik">
+  <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis&logoColor=white" alt="Redis">
 </p>
 
 ---
@@ -32,7 +35,8 @@
 - [Acesso Remoto](#acesso-remoto-tailscale) — Tailscale (WireGuard mesh)
 - [Apple](#apple) — HomeKit, Siri, Companion App
 - [Instalacao](#instalacao) — do zero ao ar em 5 minutos
-- [Servicos](#servicos) — catalogo completo com 14 containers
+- [Servicos](#servicos) — catalogo completo com 19 containers
+- [Autenticacao (Authentik)](#autenticacao-authentik) — IdP/SSO + sidecar ScaleTail
 - [Banco de dados](#banco-de-dados-mariadb) — MariaDB central
 - [Estrutura](#estrutura) — arvore de diretorios
 - [Seguranca](#seguranca) — IDS/IPS, CrowdSec, hardenings
@@ -78,6 +82,11 @@ flowchart TB
             Stats["suricata-stats"]
             Mumble["Mumble VoIP"]
             Kali["Kali"]
+            Authentik["Authentik"]
+            PG["Postgres"]
+            Redis["Redis"]
+            Worker["Authentik worker"]
+            TsAuth["ts-authentik<br/>sidecar"]
         end
 
         subgraph HostNet["host network"]
@@ -90,6 +99,11 @@ flowchart TB
     Tailscale -->|"subnet routes<br/>192.168.20.0/24 + 172.19.0.0/16"| Backend
     Internet -->|":80 :443"| Traefik
     Traefik -->|"hostname routing"| HA
+    Traefik -->|"authentik.home"| Authentik
+    Authentik -->|"auth"| PG
+    Authentik --> Redis
+    Worker -->|"bootstrap"| PG
+    TsAuth -->|"tailnet HTTPS"| Authentik
     Traefik --> Grafana
     Traefik --> Forgejo
     Traefik --> Frigate
@@ -112,6 +126,8 @@ flowchart TB
 | MariaDB | Banco central — HA (recorder), Forgejo, Grafana, CrowdSec, Mumble |
 | Suricata + CrowdSec | IDS/IPS — detecta scans, aplica bans, notifica via HA webhook |
 | Prometheus + Grafana | Metricas e dashboards de todos os servicos |
+| Authentik | IdP/SSO — autentica os servicos via OIDC (admin akadmin) |
+| ts-authentik | Sidecar ScaleTail — URL propria https://authentik.<tailnet>.ts.net (Tailscale Serve) |
 
 ---
 
@@ -142,6 +158,17 @@ O container `tailscale` atua como **subnet router**, expondo a LAN
    Machines > homelab > Edit route settings > aprovar `192.168.20.0/24` e `172.19.0.0/16`
 
 </details>
+
+### ScaleTail (sidecar)
+
+O [ScaleTail](https://github.com/tailscale-dev/ScaleTail) e um conjunto de configs
+Docker Compose com sidecar Tailscale — cada servico ganha URL propria
+`https://<app>.<tailnet>.ts.net` via **Tailscale Serve** (HTTPS automatico, sem portas
+abertas). No homelab, o Authentik ja usa esse padrao (`ts-authentik` no stack `auth`).
+
+Para adicionar em outro servico: sidecar `ts-<app>` com `TS_SERVE_CONFIG` apontando para
+o container (ex.: `http://app:PORTA`), auth key reutilizavel com tags `tag:homelab`
+(ja no sops como `TAILSCALE_AUTHKEY`) e MagicDNS habilitado na conta.
 
 > **iPhone**: instale o app Tailscale, faca login na mesma conta — `https://ha.home`,
 > `https://grafana.home`, etc. funcionam como se estivesse em casa.
@@ -211,6 +238,7 @@ apontando `192.168.20.189`). Devem bater com `traefik/dynamic.yml`.
 | `grafana.home` | Grafana |
 | `git.home` | Forgejo |
 | `frigate.home` | Frigate (NVR) |
+| `authentik.home` | Authentik (IdP/SSO) |
 
 ---
 
@@ -232,6 +260,11 @@ apontando `192.168.20.189`). Devem bater com `traefik/dynamic.yml`.
 | monitoring | grafana | `11.6.0` | `127.0.0.1:3000` | backend |
 | media | frigate | `stable` | `:8554,8555` | backend |
 | network | tailscale | `latest` | subnet router | host |
+| auth | postgres | `16-alpine` | interno | backend |
+| auth | redis | `7-alpine` | interno | backend |
+| auth | server | `2026.5.6` | `9000` interno | backend |
+| auth | worker | `2026.5.6` | — | backend |
+| auth | ts-authentik | `latest` | `https://authentik.<tailnet>.ts.net` | backend |
 
 ---
 
@@ -260,6 +293,42 @@ Provisionamento em duas camadas no primeiro boot (datadir vazio):
 
 ---
 
+---
+
+## Autenticacao (Authentik)
+
+[Authentik](https://goauthentik.io/) e o Identity Provider (IdP/SSO) do homelab —
+autenticacao central (OIDC) para os servicos. Admin inicial: `akadmin` (senha =
+`AUTHENTIK_BOOTSTRAP_PASSWORD` no sops), bootstrap feito pelo worker no primeiro boot.
+
+Stack `compose/authentik.yaml` (rede `backend`, sem portas expostas no host):
+
+| servico | imagem | funcao |
+|---|---|---|
+| postgres | `16-alpine` | banco dedicado (Authentik NAO suporta MariaDB) |
+| redis | `7-alpine` | cache/filas |
+| server | `2026.5.6` | API + UI (`:9000` interno) |
+| worker | `2026.5.6` | tarefas em background (bootstrap do admin) |
+| ts-authentik | `latest` | sidecar ScaleTail (URL propria no tailnet) |
+
+**Setup (1x)**:
+
+```bash
+sops compose/sops-secrets.yaml   # AUTHENTIK_SECRET_KEY, AUTHENTIK_POSTGRES_PASSWORD,
+                                 # AUTHENTIK_BOOTSTRAP_PASSWORD, AUTHENTIK_BOOTSTRAP_EMAIL
+bash scripts/decrypt-secrets.sh
+docker compose -f compose/compose.yaml up -d authentik
+```
+
+**Acesso**:
+- LAN/tailnet: `https://authentik.home` (via Traefik)
+- URL propria no tailnet: `https://authentik.<tailnet>.ts.net` (sidecar ScaleTail,
+  Tailscale Serve com HTTPS automatico — requer MagicDNS habilitado)
+
+Para usar como SSO: crie um provider OIDC no UI (Admin > Applications > Providers) e
+aponte o app (ex.: Grafana via `auth.oidc`).
+
+---
 ## Estrutura
 
 ```
@@ -274,6 +343,8 @@ compose/
 ├── monitoring.yaml        prometheus · grafana
 ├── media.yaml             frigate (NVR)
 ├── services.yaml          traefik · forgejo · mumble · kali
+├── authentik.yaml        authentik (IdP/SSO) + sidecar ScaleTail
+├── authentik-serve.json  serve config do sidecar (ScaleTail)
 ├── .env.example           template
 ├── sops-secrets.yaml      encriptado (SOPS + age)
 └── sops-secrets.template.yaml
@@ -381,6 +452,8 @@ Conectar como SuperUser p/ administrar:
 - `no-new-privileges:true`, healthchecks e resource limits em todos os containers
 - Secrets: SOPS + age (`.env` gitignored, `.sops.yaml` com chave publica commitavel)
 - Tailscale: auth key ephemeral, subnet routes aprovadas manualmente
+- Authentik: secrets via sops (AUTHENTIK_*), PostgreSQL dedicado sem porta no host,
+  redis isolado na rede backend, analytics e error-reporting desabilitados
 
 ### Portas expostas
 
@@ -434,6 +507,8 @@ docker compose -f compose/compose.yaml up -d
 |---|---|
 | [EASUN SMG II ESPHome](https://github.com/robgt978/Easun-SMG-II-11Kw-esphome-) | robgt978 |
 | [Tailscale](https://tailscale.com/) | Tailscale Inc. |
+| [ScaleTail](https://github.com/tailscale-dev/ScaleTail) | Tailscale |
+| [Authentik](https://goauthentik.io/) | goauthentik |
 | [Suricata](https://suricata.io/) | OISF |
 | [CrowdSec](https://github.com/crowdsecurity/crowdsec) | CrowdSec |
 | [Mumble](https://github.com/mumble-voip/mumble) | Mumble VoIP |

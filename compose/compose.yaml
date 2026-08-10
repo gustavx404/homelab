@@ -11,4 +11,5 @@ include:
   - monitoring.yaml
   - media.yaml
   - services.yaml
+  - authentik.yaml
   - tailscale.yaml

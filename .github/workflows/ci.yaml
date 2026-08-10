@@ -55,6 +55,9 @@ jobs:
           - mariadb:lts
           - crowdsecurity/crowdsec:latest
           - ghcr.io/blakeblackshear/frigate:stable
+          - ghcr.io/goauthentik/server:2026.5.6
+          - postgres:16-alpine
+          - redis:7-alpine
     steps:
       - uses: actions/checkout@v5
       - name: Pull image (retry on GHCR rate limit)
