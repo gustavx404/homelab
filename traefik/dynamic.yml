@@ -18,6 +18,18 @@ http:
       basicAuth:
         users:
           - "frigate:$2y$12$8qbhOjw2gna2jO31S9jvTulqUdzoQdgYWMjqe9lyI6dx9kKYAXMTe"
+    strip-git:
+      stripPrefix:
+        prefixes:
+          - "/git"
+    strip-photos:
+      stripPrefix:
+        prefixes:
+          - "/photos"
+    strip-vault:
+      stripPrefix:
+        prefixes:
+          - "/vault"
 
   routers:
     homeassistant:
@@ -124,14 +136,36 @@ http:
         - tailscale
       service: vaultwarden
 
-    # Path-based routing p/ Funnel: so Authentik funciona com subpath.
-    # Outros apps (Forgejo, Immich, Vaultwarden) geram assets com paths
-    # absolutos — acessiveis apenas via Tailscale direto (subdominios *-ts).
+    # Path-based routing p/ Funnel (dominio principal homelab.buru-eagle.ts.net)
     funnel-root:
       rule: "Host(`homelab.buru-eagle.ts.net`)"
       entryPoints:
         - tailscale
       service: authentik
+
+    funnel-git:
+      rule: "Host(`homelab.buru-eagle.ts.net`) && PathPrefix(`/git`)"
+      entryPoints:
+        - tailscale
+      middlewares:
+        - strip-git
+      service: forgejo
+
+    funnel-photos:
+      rule: "Host(`homelab.buru-eagle.ts.net`) && PathPrefix(`/photos`)"
+      entryPoints:
+        - tailscale
+      middlewares:
+        - strip-photos
+      service: immich
+
+    funnel-vault:
+      rule: "Host(`homelab.buru-eagle.ts.net`) && PathPrefix(`/vault`)"
+      entryPoints:
+        - tailscale
+      middlewares:
+        - strip-vault
+      service: vaultwarden
 
   services:
     homeassistant:

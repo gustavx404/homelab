@@ -44,7 +44,7 @@ services:
       - FORGEJO__database__NAME=forgejo
       - FORGEJO__database__USER=forgejo
       - FORGEJO__database__PASSWD=${FORGEJO_DB_PASSWORD:?FORGEJO_DB_PASSWORD required}
-      - FORGEJO__server__ROOT_URL=https://git.home/
+      - FORGEJO__server__ROOT_URL=https://homelab.buru-eagle.ts.net/git/
       - FORGEJO__metrics__ENABLED=true
     deploy:
       resources:
