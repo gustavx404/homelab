@@ -18,6 +18,30 @@ http:
       basicAuth:
         users:
           - "frigate:$2y$12$8qbhOjw2gna2jO31S9jvTulqUdzoQdgYWMjqe9lyI6dx9kKYAXMTe"
+    strip-ha:
+      stripPrefix:
+        prefixes:
+          - "/ha"
+    strip-grafana:
+      stripPrefix:
+        prefixes:
+          - "/grafana"
+    strip-git:
+      stripPrefix:
+        prefixes:
+          - "/git"
+    strip-frigate:
+      stripPrefix:
+        prefixes:
+          - "/frigate"
+    strip-photos:
+      stripPrefix:
+        prefixes:
+          - "/photos"
+    strip-vault:
+      stripPrefix:
+        prefixes:
+          - "/vault"
 
   routers:
     homeassistant:
@@ -122,6 +146,65 @@ http:
       rule: "HostRegexp(`^vault\\..+\\.ts\\.net$`)"
       entryPoints:
         - tailscale
+      service: vaultwarden
+
+    # Path-based routing p/ Funnel (dominio principal homelab.buru-eagle.ts.net)
+    # Tailscale Serve/Funnel termina TLS e faz proxy HTTP em 127.0.0.1:8181
+    funnel-root:
+      rule: "Host(`homelab.buru-eagle.ts.net`) && PathPrefix(`/`)"
+      entryPoints:
+        - tailscale
+      service: authentik
+
+    funnel-ha:
+      rule: "Host(`homelab.buru-eagle.ts.net`) && PathPrefix(`/ha`)"
+      entryPoints:
+        - tailscale
+      middlewares:
+        - strip-ha
+        - ha-headers
+      service: homeassistant
+
+    funnel-grafana:
+      rule: "Host(`homelab.buru-eagle.ts.net`) && PathPrefix(`/grafana`)"
+      entryPoints:
+        - tailscale
+      middlewares:
+        - strip-grafana
+      service: grafana
+
+    funnel-git:
+      rule: "Host(`homelab.buru-eagle.ts.net`) && PathPrefix(`/git`)"
+      entryPoints:
+        - tailscale
+      middlewares:
+        - strip-git
+      service: forgejo
+
+    funnel-frigate:
+      rule: "Host(`homelab.buru-eagle.ts.net`) && PathPrefix(`/frigate`)"
+      entryPoints:
+        - tailscale
+      middlewares:
+        - strip-frigate
+        - frigate-headers
+        - frigate-auth
+      service: frigate
+
+    funnel-photos:
+      rule: "Host(`homelab.buru-eagle.ts.net`) && PathPrefix(`/photos`)"
+      entryPoints:
+        - tailscale
+      middlewares:
+        - strip-photos
+      service: immich
+
+    funnel-vault:
+      rule: "Host(`homelab.buru-eagle.ts.net`) && PathPrefix(`/vault`)"
+      entryPoints:
+        - tailscale
+      middlewares:
+        - strip-vault
       service: vaultwarden
 
   services:
