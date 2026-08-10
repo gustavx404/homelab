@@ -51,7 +51,7 @@ services:
       retries: 5
 
   server:
-    image: ghcr.io/goauthentik/server:2024.12.3
+    image: ghcr.io/goauthentik/server:2026.5.6
     container_name: authentik-server
     command: server
     ports:
@@ -92,7 +92,7 @@ services:
       start_period: 30s
 
   worker:
-    image: ghcr.io/goauthentik/server:2024.12.3
+    image: ghcr.io/goauthentik/server:2026.5.6
     container_name: authentik-worker
     command: worker
     networks:
@@ -124,7 +124,7 @@ services:
           memory: 256M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import sys; sys.exit(0)\" || exit 1"]
+      test: ["CMD-SHELL", "kill -0 1 2>/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -140,6 +140,7 @@ services:
       - backend
     environment:
       - TS_AUTHKEY=${TAILSCALE_AUTHKEY:?TAILSCALE_AUTHKEY required}
+      - TS_CERT_DOMAIN=homelab.buru-eagle.ts.net
       - TS_STATE_DIR=/var/lib/tailscale
       - TS_SERVE_CONFIG=/config/serve.json
       - TS_USERSPACE=false

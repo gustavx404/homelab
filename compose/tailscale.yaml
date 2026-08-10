@@ -29,6 +29,7 @@ services:
     environment:
       - TS_AUTHKEY=${TAILSCALE_AUTHKEY:?TAILSCALE_AUTHKEY required}
       - TS_HOSTNAME=homelab
+      - TS_CERT_DOMAIN=homelab.buru-eagle.ts.net
       - TS_ROUTES=192.168.20.0/24,172.19.0.0/16
       - TS_STATE_DIR=/var/lib/tailscale
       - TS_SERVE_CONFIG=/config/serve.json
