@@ -35,6 +35,38 @@ services:
       timeout: 10s
       retries: 3
 
+  # Tailscale Funnel dedicado p/ Home Assistant (node proprio = DNS publico)
+  ts-homeassistant:
+    image: tailscale/tailscale:latest
+    container_name: ts-homeassistant
+    hostname: ha
+    networks:
+      - backend
+    volumes:
+      - ../data/ts-homeassistant:/var/lib/tailscale
+      - ../compose/ha-serve.json:/config/serve.json:ro
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - TS_AUTHKEY=${TAILSCALE_AUTHKEY:?TAILSCALE_AUTHKEY required}
+      - TS_HOSTNAME=ha
+      - TS_CERT_DOMAIN=ha.buru-eagle.ts.net
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_SERVE_CONFIG=/config/serve.json
+      - TS_USERSPACE=false
+      - TS_AUTH_ONCE=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "tailscale status --json > /dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
   esphome:
     image: ghcr.io/esphome/esphome:stable
     container_name: esphome
