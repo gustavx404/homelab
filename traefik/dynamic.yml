@@ -60,6 +60,44 @@ http:
       service: frigate
       tls: {}
 
+    # Routers p/ o entrypoint tailscale (sem tls): o Tailscale Serve/Funnel ja
+    # termina o TLS e faz proxy HTTP em 127.0.0.1:8181. Routers com tls:{} so
+    # atendem trafego TLS e ignorariam o HTTP plain, por isso sao separados.
+    homeassistant-ts:
+      rule: "HostRegexp(`^ha\\..+\\.ts\\.net$`)"
+      entryPoints:
+        - tailscale
+      middlewares:
+        - ha-headers
+      service: homeassistant
+
+    grafana-ts:
+      rule: "HostRegexp(`^grafana\\..+\\.ts\\.net$`)"
+      entryPoints:
+        - tailscale
+      service: grafana
+
+    forgejo-ts:
+      rule: "HostRegexp(`^git\\..+\\.ts\\.net$`)"
+      entryPoints:
+        - tailscale
+      service: forgejo
+
+    authentik-ts:
+      rule: "HostRegexp(`^authentik\\..+\\.ts\\.net$`)"
+      entryPoints:
+        - tailscale
+      service: authentik
+
+    frigate-ts:
+      rule: "HostRegexp(`^frigate\\..+\\.ts\\.net$`)"
+      entryPoints:
+        - tailscale
+      middlewares:
+        - frigate-headers
+        - frigate-auth
+      service: frigate
+
   services:
     homeassistant:
       loadBalancer:

@@ -19,6 +19,14 @@ entryPoints:
       respondingTimeouts:
         readTimeout: 600s
         idleTimeout: 600s
+  # Entrypoint p/ Tailscale Serve/Funnel: sem redirect 80->443 (o Tailscale ja
+  # termina o TLS e faz proxy HTTP p/ este port). Sem isso, Serve->:80->301
+  # https -> loop infinito de redirect (ERR_TOO_MANY_REDIRECTS).
+  # Nota: address ":8181" (todas interfaces do container) — o docker-proxy do
+  # publish "127.0.0.1:8181:8181" encaminha p/ o eth0 do container, entao o
+  # bind precisa ser no eth0 e nao no loopback do container.
+  tailscale:
+    address: ":8181"
 
 providers:
   file:
