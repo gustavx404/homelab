@@ -73,4 +73,3 @@ http:
       loadBalancer:
         servers:
           - url: "http://frigate:8971"
-

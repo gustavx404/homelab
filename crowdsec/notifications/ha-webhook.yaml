@@ -21,7 +21,9 @@ max_retry: 3
 timeout: 10s
 
 format: |
-  {"message": "CrowdSec bloqueou {{ len . }} alerta(s). Cenario: {{ (first .).Scenario }}. Alvo: {{ (first .).Source.IP }}. Decisao: {{ (first (first .).Decisions).Type }} por {{ (first (first .).Decisions).Duration }}"}
+  {"message": "CrowdSec bloqueou {{ len . }} alerta(s).\
+   Cenario: {{ (first .).Scenario }}. Alvo: {{ (first .).Source.IP }}.\
+   Decisao: {{ (first (first .).Decisions).Type }} por {{ (first (first .).Decisions).Duration }}"}
 
 url: "http://homeassistant:8123/api/webhook/${HA_WEBHOOK_ID}"
 method: POST
