@@ -237,21 +237,26 @@ apontando `192.168.20.189`). Devem bater com `traefik/dynamic.yml`.
 
 ## Banco de dados (MariaDB)
 
-Banco central compartilhado — `compose/database.yaml`, rede `backend`.
-Bancos e usuarios criados no primeiro boot (MariaDB entrypoint p/ o banco
-`homeassistant`; `database-init/01-create-app-databases.sh` p/ os demais).
+Container `mariadb:lts`, rede `backend`, 512M RAM, 50 conexoes, `utf8mb4`.
+Provisionamento em duas camadas no primeiro boot (datadir vazio):
+
+1. **Entrypoint do MariaDB**: cria o banco `homeassistant` e usuario `ha_user`
+   via secrets Docker (`MARIADB_DATABASE`, `MARIADB_USER`, `MARIADB_PASSWORD`)
+2. **Init script** (`database-init/01-create-app-databases.sh`): cria os bancos
+   e usuarios de Forgejo, Grafana, CrowdSec e Mumble
 
 | app | banco | usuario | secret SOPS |
 |---|---|---|---|
-| Home Assistant (recorder) | homeassistant | ha_user | `MARIADB_USER` / `MARIADB_PASSWORD` |
+| — (root) | — | root | `MARIADB_ROOT_PASSWORD` |
+| Home Assistant (recorder) | homeassistant | ha_user | `MARIADB_USER`, `MARIADB_PASSWORD`, `MARIADB_DATABASE` |
 | Forgejo | forgejo | forgejo | `FORGEJO_DB_PASSWORD` |
 | Grafana | grafana | grafana | `GRAFANA_DB_PASSWORD` |
 | CrowdSec | crowdsec | crowdsec | `CROWDSEC_DB_PASSWORD` |
 | Mumble (murmur) | mumble | mumble | `MUMBLE_DB_PASSWORD` |
 
-> Senhas repassadas como env var no compose. O Home Assistant constroi a connection
-> string MySQL internamente via `ha-entrypoint.sh` a partir de `MARIADB_USER`,
-> `MARIADB_PASSWORD` e `MARIADB_DATABASE`.
+> Senhas repassadas como env var no compose. HA constroi a connection string
+> internamente (`ha-entrypoint.sh`). Root password via Docker secret (`_FILE`),
+> nunca exposta como env var. Init script so roda com datadir vazio — idempotente.
 
 ---
 
