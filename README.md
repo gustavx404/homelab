@@ -286,7 +286,7 @@ homeassistant/  HA + ESPHome
 monitoring/  prometheus + grafana dashboards
 data/        volumes persistentes (mount de todos os containers; alvo do backup)
 .github/     CI (yamllint · compose validate · trivy config e imagem)
-scripts/     init-sops · decrypt-secrets · update-suricata-rules · suricata-stats
+scripts/     init-sops · decrypt-secrets · update-suricata-rules · suricata-stats · mumble-setup
 ```
 
 Stacks podem subir individualmente com `compose/network.yaml` (obrigatorio) +
@@ -354,6 +354,25 @@ docker exec crowdsec cscli decisions list    # bans ativos
 docker exec crowdsec cscli console status    # estado CAPI
 ```
 
+---
+
+## Mumble (VoIP)
+
+Servidor Murmur com 4 canais (`Home`, `Study`, `Gaming`, `AFK`), IPv4 + IPv6.
+
+Setup inicial (canais e ACLs):
+```bash
+bash scripts/mumble-setup.sh
+```
+
+Conectar como SuperUser p/ administrar:
+- **Name**: `SuperUser`
+- **Password**: `MUMBLE_CONFIG_supw` (sops)
+- **IPv4**: `mumble://192.168.20.189:64738`
+- **IPv6**: `mumble://[2804:1530:10b:d8b5::189]:64738`
+
+---
+
 ### Hardenings
 
 - Apps web acessiveis apenas via Traefik (hostname routing + TLS)
@@ -371,7 +390,7 @@ docker exec crowdsec cscli console status    # estado CAPI
 | `80,443` | traefik | entrada HTTP/S |
 | `2222` | forgejo | git ssh |
 | `6052` | esphome | host (mDNS) |
-| `64738` | mumble | VoIP |
+| `64738` | mumble | VoIP (IPv4 + IPv6) |
 | `8080` | crowdsec | LAPI (bouncer OpenWrt) |
 | `8554` | frigate | RTSP |
 | `8555` | frigate | WebRTC |

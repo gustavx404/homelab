@@ -1,0 +1,57 @@
+#!/bin/bash
+# mumble-setup.sh — cria canais e regras ACL no Mumble (Murmur)
+# Roda no host. Idempotente.
+# Requer: container mariadb rodando.
+set -euo pipefail
+
+# Resolve senha root do MariaDB (Docker secret montado no container)
+echo "==> Lendo senha root do MariaDB..."
+MYSQL_PWD=$(docker exec mariadb cat /run/secrets/MARIADB_ROOT_PASSWORD 2>/dev/null) || {
+  echo "ERROR: nao foi possivel ler a senha root. O container mariadb esta rodando?" >&2
+  exit 1
+}
+
+mysql_cmd() {
+  docker exec -i -e MYSQL_PWD="$MYSQL_PWD" mariadb mariadb -uroot "$@"
+}
+
+echo "==> Criando canais padrao..."
+
+mysql_cmd mumble <<'SQL'
+INSERT IGNORE INTO channels (server_id, channel_id, parent_id, name, inheritacl)
+VALUES
+  (1, 1, 0, 'Home',   1),
+  (1, 2, 0, 'Study',  1),
+  (1, 3, 0, 'Gaming', 1),
+  (1, 4, 0, 'AFK',    1);
+SQL
+
+echo "==> Canais criados (ou ja existiam)."
+
+echo "==> Aplicando regras ACL no canal Root..."
+mysql_cmd mumble <<'SQL'
+DELETE FROM acl WHERE server_id=1 AND channel_id=0;
+
+-- @all: Enter + Speak (aplica aqui e nos sub-canais)
+INSERT INTO acl (server_id, channel_id, priority, user_id, group_name, apply_here, apply_sub, grantpriv)
+VALUES (1, 0, 5, -1, 'all', 1, 1, 3);
+
+-- @auth: Enter + Speak + MakeTemp (aplica aqui)
+INSERT INTO acl (server_id, channel_id, priority, user_id, group_name, apply_here, apply_sub, grantpriv)
+VALUES (1, 0, 10, 0, 'auth', 1, 0, 35);
+
+-- @auth: Enter + Speak + Whisper (aplica nos sub-canais)
+INSERT INTO acl (server_id, channel_id, priority, user_id, group_name, apply_here, apply_sub, grantpriv)
+VALUES (1, 0, 10, 0, 'auth', 0, 1, 7);
+SQL
+
+echo "==> ACL aplicada."
+echo
+echo "Setup completo. Conecte no Mumble como SuperUser:"
+echo "  Name:     SuperUser"
+echo "  Password: (MUMBLE_CONFIG_supw do sops)"
+echo "  Server:   192.168.20.189 (IPv4)"
+echo "  Server:   [2804:1530:10b:d8b5::189] (IPv6 publico)"
+echo
+echo "Depois registre seu usuario normal e de promote via cliente."
+echo "https://wiki.mumble.info/wiki/ACL_and_Groups"
