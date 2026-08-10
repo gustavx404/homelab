@@ -36,6 +36,7 @@ flowchart TB
             Prometheus["Prometheus"]
             MariaDB["MariaDB"]
             CrowdSec["CrowdSec"]
+            Stats["suricata-stats"]
             Mumble["Mumble VoIP"]
             Kali["Kali"]
         end
@@ -47,7 +48,7 @@ flowchart TB
     end
 
     iPhone -->|"WireGuard mesh"| Tailscale
-    Tailscale -->|"subnet routes<br/>192.168.20.0/24"| Backend
+    Tailscale -->|"subnet routes<br/>192.168.20.0/24 + 172.19.0.0/16"| Backend
     Internet -->|":80 :443"| Traefik
     Traefik -->|"hostname routing"| HA
     Traefik --> Grafana
@@ -61,6 +62,7 @@ flowchart TB
     Prometheus -->|"scrape"| HA
     Prometheus -->|"scrape"| Grafana
     Prometheus -->|"scrape"| Forgejo
+    Prometheus -->|"scrape"| Frigate
 ```
 
 - **Traefik** e o unico ponto de entrada HTTP/S. Roteia por hostname (`ha.home`, `grafana.home`, `git.home`, `frigate.home`).
@@ -224,8 +226,8 @@ A lista de hostnames precisa bater com as rotas em `traefik/dynamic.yml`.
 | services | mumble | `latest` | `64738` tcp/udp |
 | services | kali | `rolling` | cli |
 | monitoring | prometheus | `v3.4.0` | `127.0.0.1:9090` |
-| monitoring | grafana | `11.6.0` | interno |
-| media | frigate | `stable` | interno |
+| monitoring | grafana | `11.6.0` | `127.0.0.1:3000` |
+| media | frigate | `stable` | `8554,8555` |
 | network | tailscale | `latest` | subnet router |
 
 ### Banco de dados (MariaDB)
@@ -290,7 +292,7 @@ Stacks que usam o banco central (home, security, services, monitoring) exigem co
 
 ## IDS/IPS
 
-Suricata monitora `eno1` e `br-homelab`. CrowdSec processa `eve.json` em tempo real. Dois alertas em 60 segundos disparam ban de 6 horas, propagado para o OpenWrt na borda.
+Suricata monitora `eno1` e `br-homelab`. CrowdSec processa `eve.json` em tempo real. Tres alertas de scan em 60 segundos disparam um ban, propagado para o OpenWrt na borda (duracao conforme o perfil abaixo).
 
 | assinatura | limite |
 |-----------|--------|
@@ -381,7 +383,7 @@ Tailscale nao expoe porta — conexao outbound WireGuard com NAT traversal.
 - `network_mode: host` apenas onde necessario (suricata, esphome, tailscale)
 - `suricata-stats` le o `eve.json` somente-leitura (rede `backend`, porta interna, sem bind)
 - `no-new-privileges:true` nos containers host
-- healthchecks e resource limits em todos os containers
+- healthchecks em todos os containers; resource limits em todos exceto tailscale
 - CI: yamllint, compose-validate, trivy config, trivy cve (9 imagens)
 - Tailscale: auth key ephemeral, subnet routes aprovadas manualmente no admin console
 
