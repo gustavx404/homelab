@@ -8,8 +8,8 @@ services:
     networks:
       - backend
     ports:
-      - "80:80"
-      - "443:443"
+      - "192.168.20.189:80:80"
+      - "192.168.20.189:443:443"
       # Tailscale Serve/Funnel (host-network container alcanca 127.0.0.1)
       - "127.0.0.1:8181:8181"
     volumes:
