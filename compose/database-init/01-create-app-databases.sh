@@ -8,6 +8,7 @@ set -euo pipefail
 : "${FORGEJO_DB_PASSWORD:?FORGEJO_DB_PASSWORD nao definida no .env}"
 : "${CROWDSEC_DB_PASSWORD:?CROWDSEC_DB_PASSWORD nao definida no .env}"
 : "${GRAFANA_DB_PASSWORD:?GRAFANA_DB_PASSWORD nao definida no .env}"
+: "${MUMBLE_DB_PASSWORD:?MUMBLE_DB_PASSWORD nao definida no .env}"
 
 # Senha root: secret file (compose/database.yaml) ou env (uso manual/testes)
 if [ -r /run/secrets/MARIADB_ROOT_PASSWORD ]; then
@@ -33,6 +34,10 @@ GRANT ALL PRIVILEGES ON crowdsec.* TO 'crowdsec'@'%';
 CREATE DATABASE IF NOT EXISTS grafana CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS 'grafana'@'%' IDENTIFIED BY '${GRAFANA_DB_PASSWORD//\'/\'\'}';
 GRANT ALL PRIVILEGES ON grafana.* TO 'grafana'@'%';
+
+CREATE DATABASE IF NOT EXISTS mumble CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS 'mumble'@'%' IDENTIFIED BY '${MUMBLE_DB_PASSWORD//\'/\'\'}';
+GRANT ALL PRIVILEGES ON mumble.* TO 'mumble'@'%';
 
 FLUSH PRIVILEGES;
 SQL

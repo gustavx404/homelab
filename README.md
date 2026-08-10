@@ -97,6 +97,7 @@ flowchart TB
     Forgejo -->|"repo data"| MariaDB
     Grafana -->|"dashboards"| MariaDB
     CrowdSec -->|"decisions"| MariaDB
+    Mumble -->|"murmur DB"| MariaDB
     Prometheus -->|"scrape"| HA
     Prometheus -->|"scrape"| Grafana
     Prometheus -->|"scrape"| Forgejo
@@ -107,7 +108,7 @@ flowchart TB
 |---|---|
 | Traefik | Unico ponto de entrada HTTP/S — roteia `*.home` por hostname |
 | Tailscale | Mesh WireGuard — iPhone acessa tudo de qualquer lugar, sem portas abertas |
-| MariaDB | Banco central — HA (recorder), Forgejo, Grafana, CrowdSec |
+| MariaDB | Banco central — HA (recorder), Forgejo, Grafana, CrowdSec, Mumble |
 | Suricata + CrowdSec | IDS/IPS — detecta scans, aplica bans, notifica via HA webhook |
 | Prometheus + Grafana | Metricas e dashboards de todos os servicos |
 
@@ -239,11 +240,14 @@ apontando `192.168.20.189`). Devem bater com `traefik/dynamic.yml`.
 | Forgejo | forgejo | forgejo |
 | Grafana | grafana | grafana |
 | CrowdSec | crowdsec | crowdsec |
+| Mumble (murmur) | mumble | mumble |
 
 Bancos criados no primeiro boot por `database-init/01-create-app-databases.sh`.
-Senhas no SOPS: `FORGEJO_DB_PASSWORD`, `GRAFANA_DB_PASSWORD`, `CROWDSEC_DB_PASSWORD`.
+Senhas no SOPS: `FORGEJO_DB_PASSWORD`, `GRAFANA_DB_PASSWORD`, `CROWDSEC_DB_PASSWORD`,
+`MUMBLE_DB_PASSWORD`.
 
-Mumble usa SQLite (volume baixo, evita dependencia no banco central).
+Mumble usa o banco central via backend MySQL (`QMYSQL`). Dados antigos do
+SQLite nao sao migrados — backup em `data/mumble/mumble-server.sqlite`.
 
 ---
 

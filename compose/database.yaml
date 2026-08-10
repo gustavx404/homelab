@@ -1,6 +1,6 @@
 ---
 # Database stack: MariaDB central — banco compartilhado
-# Usado por: Home Assistant (recorder), Forgejo e CrowdSec.
+# Usado por: Home Assistant (recorder), Forgejo, Grafana, CrowdSec e Mumble.
 # Bancos/usuarios das apps: compose/database-init/ (criados no primeiro boot).
 
 services:
@@ -23,6 +23,7 @@ services:
       - FORGEJO_DB_PASSWORD=${FORGEJO_DB_PASSWORD:?FORGEJO_DB_PASSWORD required}
       - CROWDSEC_DB_PASSWORD=${CROWDSEC_DB_PASSWORD:?CROWDSEC_DB_PASSWORD required}
       - GRAFANA_DB_PASSWORD=${GRAFANA_DB_PASSWORD:?GRAFANA_DB_PASSWORD required}
+      - MUMBLE_DB_PASSWORD=${MUMBLE_DB_PASSWORD:?MUMBLE_DB_PASSWORD required}
     secrets:
       - MARIADB_ROOT_PASSWORD
       - MARIADB_DATABASE
