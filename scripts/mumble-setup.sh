@@ -32,17 +32,16 @@ echo "==> Aplicando regras ACL no canal Root..."
 mysql_cmd mumble <<'SQL'
 DELETE FROM acl WHERE server_id=1 AND channel_id=0;
 
+-- ACL no canal Root (channel_id=0), user_id=0 (SuperUser como placeholder p/ groups)
+-- grantpriv: 1=Enter 2=Speak 4=Whisper 8=MuteDeafen 16=Move 32=MakeChannel 64=Link 128=TextMessage
+
 -- @all: Enter + Speak (aplica aqui e nos sub-canais)
 INSERT INTO acl (server_id, channel_id, priority, user_id, group_name, apply_here, apply_sub, grantpriv)
-VALUES (1, 0, 5, -1, 'all', 1, 1, 3);
+VALUES (1, 0, 5, 0, 'all', 1, 1, 3);
 
--- @auth: Enter + Speak + MakeTemp (aplica aqui)
+-- @auth: Enter + Speak + Whisper + MakeTempChannel (aplica aqui e nos sub-canais)
 INSERT INTO acl (server_id, channel_id, priority, user_id, group_name, apply_here, apply_sub, grantpriv)
-VALUES (1, 0, 10, 0, 'auth', 1, 0, 35);
-
--- @auth: Enter + Speak + Whisper (aplica nos sub-canais)
-INSERT INTO acl (server_id, channel_id, priority, user_id, group_name, apply_here, apply_sub, grantpriv)
-VALUES (1, 0, 10, 0, 'auth', 0, 1, 7);
+VALUES (1, 0, 10, 0, 'auth', 1, 1, 39);
 SQL
 
 echo "==> ACL aplicada."
