@@ -32,6 +32,8 @@ services:
         condition: service_healthy
     cap_drop:
       - ALL
+    cap_add:
+      - DAC_OVERRIDE
     security_opt:
       - no-new-privileges:true
     deploy:
