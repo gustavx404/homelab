@@ -1,9 +1,9 @@
 #!/bin/sh
-# Wrapper: export Docker secrets as env vars before starting Home Assistant
-# Prevents credentials from leaking via `docker inspect`
+# Wrapper: constroi RECORDER_DB_URL a partir dos env vars MARIADB_* antes de iniciar o HA.
+# Prevents credentials from leaking via `docker inspect`.
 
-if [ -f /run/secrets/RECORDER_DB_URL ]; then
-  export RECORDER_DB_URL="$(cat /run/secrets/RECORDER_DB_URL)"
+if [ -n "${MARIADB_USER:-}" ] && [ -n "${MARIADB_PASSWORD:-}" ] && [ -n "${MARIADB_DATABASE:-}" ]; then
+  export RECORDER_DB_URL="mysql://${MARIADB_USER}:${MARIADB_PASSWORD}@mariadb/${MARIADB_DATABASE}?charset=utf8mb4"
 fi
 
 exec /init

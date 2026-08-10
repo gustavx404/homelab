@@ -29,13 +29,5 @@ fi
 echo "Decrypting $SECRETS_FILE -> $ENV_FILE"
 sops -d --output-type dotenv "$SECRETS_FILE" > "$ENV_FILE"
 
-# Derive RECORDER_DB_URL from MARIADB_* variables
-# shellcheck disable=SC1090
-source "$ENV_FILE"
-if [ -n "${MARIADB_USER:-}" ] && [ -n "${MARIADB_PASSWORD:-}" ] && [ -n "${MARIADB_DATABASE:-}" ]; then
-  RECORDER_DB_URL="mysql://${MARIADB_USER}:${MARIADB_PASSWORD}@mariadb/${MARIADB_DATABASE}?charset=utf8mb4"
-  echo "RECORDER_DB_URL=${RECORDER_DB_URL}" >> "$ENV_FILE"
-fi
-
 chmod 600 "$ENV_FILE"
 echo "Done. $ENV_FILE created with restricted permissions."

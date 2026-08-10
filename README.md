@@ -249,8 +249,9 @@ Bancos e usuarios criados no primeiro boot por `database-init/01-create-app-data
 | CrowdSec | crowdsec | crowdsec | `CROWDSEC_DB_PASSWORD` |
 | Mumble (murmur) | mumble | mumble | `MUMBLE_DB_PASSWORD` |
 
-> Home Assistant recebe a conexao via secret Docker `RECORDER_DB_URL` (string completa),
-> nao via env var. Os demais apps recebem a senha como env var do compose.
+> Senhas repassadas como env var no compose. O Home Assistant constroi a connection
+> string MySQL internamente via `ha-entrypoint.sh` a partir de `MARIADB_USER`,
+> `MARIADB_PASSWORD` e `MARIADB_DATABASE`.
 
 ---
 

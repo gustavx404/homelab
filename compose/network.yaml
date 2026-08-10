@@ -16,5 +16,3 @@ secrets:
     environment: MARIADB_USER
   MARIADB_PASSWORD:
     environment: MARIADB_PASSWORD
-  RECORDER_DB_URL:
-    environment: RECORDER_DB_URL
