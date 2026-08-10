@@ -253,9 +253,6 @@ Senhas no SOPS:
 | CrowdSec | `CROWDSEC_DB_PASSWORD` | env var no compose |
 | Mumble | `MUMBLE_DB_PASSWORD` | env var `MUMBLE_CONFIG_dbPassword` |
 
-Mumble usa o banco central via backend MySQL (`QMYSQL`). Dados antigos do
-SQLite nao sao migrados — backup em `data/mumble/mumble-server.sqlite`.
-
 ---
 
 ## Estrutura
