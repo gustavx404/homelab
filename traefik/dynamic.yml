@@ -14,6 +14,10 @@ http:
         referrerPolicy: "strict-origin-when-cross-origin"
         customFrameOptionsValue: "SAMEORIGIN"
         permissionsPolicy: "camera=(), microphone=(), geolocation=()"
+    funnel-proto:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"
     ha-headers:
       headers:
         customRequestHeaders:
@@ -150,6 +154,8 @@ http:
       rule: "Host(`homelab.buru-eagle.ts.net`)"
       entryPoints:
         - tailscale
+      middlewares:
+        - funnel-proto
       service: authentik
 
   services:
