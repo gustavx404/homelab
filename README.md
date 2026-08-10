@@ -33,6 +33,7 @@
 - [Apple](#apple) — HomeKit, Siri, Companion App
 - [Instalacao](#instalacao) — do zero ao ar em 5 minutos
 - [Servicos](#servicos) — catalogo completo com 14 containers
+- [Banco de dados](#banco-de-dados-mariadb) — MariaDB central
 - [Estrutura](#estrutura) — arvore de diretorios
 - [Seguranca](#seguranca) — IDS/IPS, CrowdSec, hardenings
 - [Backup](#backup) — rotina de backup
@@ -232,26 +233,24 @@ apontando `192.168.20.189`). Devem bater com `traefik/dynamic.yml`.
 | media | frigate | `stable` | `:8554,8555` | backend |
 | network | tailscale | `latest` | subnet router | host |
 
-### MariaDB (banco central)
+---
 
-| app | banco | usuario |
-|---|---|---|
-| Home Assistant (recorder) | homeassistant | ha_user |
-| Forgejo | forgejo | forgejo |
-| Grafana | grafana | grafana |
-| CrowdSec | crowdsec | crowdsec |
-| Mumble (murmur) | mumble | mumble |
+## Banco de dados (MariaDB)
 
-Bancos criados no primeiro boot por `database-init/01-create-app-databases.sh`.
-Senhas no SOPS:
+Banco central compartilhado — `compose/database.yaml`, rede `backend`.
+Bancos e usuarios criados no primeiro boot por `database-init/01-create-app-databases.sh`
+(exceto Home Assistant, provisionado pelo entrypoint do MariaDB).
 
-| app | secret | mecanismo |
-|---|---|---|
-| Home Assistant | `MARIADB_USER` / `MARIADB_PASSWORD` | Secret Docker `RECORDER_DB_URL` (connection string) |
-| Forgejo | `FORGEJO_DB_PASSWORD` | env var no compose |
-| Grafana | `GRAFANA_DB_PASSWORD` | env var no compose |
-| CrowdSec | `CROWDSEC_DB_PASSWORD` | env var no compose |
-| Mumble | `MUMBLE_DB_PASSWORD` | env var `MUMBLE_CONFIG_dbPassword` |
+| app | banco | usuario | secret SOPS |
+|---|---|---|---|
+| Home Assistant (recorder) | homeassistant | ha_user | `MARIADB_USER` / `MARIADB_PASSWORD` |
+| Forgejo | forgejo | forgejo | `FORGEJO_DB_PASSWORD` |
+| Grafana | grafana | grafana | `GRAFANA_DB_PASSWORD` |
+| CrowdSec | crowdsec | crowdsec | `CROWDSEC_DB_PASSWORD` |
+| Mumble (murmur) | mumble | mumble | `MUMBLE_DB_PASSWORD` |
+
+> Home Assistant recebe a conexao via secret Docker `RECORDER_DB_URL` (string completa),
+> nao via env var. Os demais apps recebem a senha como env var do compose.
 
 ---
 
