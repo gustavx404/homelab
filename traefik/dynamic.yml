@@ -22,6 +22,9 @@ http:
       stripPrefix:
         prefixes:
           - "/git"
+      stripPrefix:
+        prefixes:
+          - "/git"
     strip-photos:
       stripPrefix:
         prefixes:
