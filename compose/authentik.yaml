@@ -19,12 +19,7 @@ services:
       - POSTGRES_PASSWORD=${AUTHENTIK_POSTGRES_PASSWORD:?AUTHENTIK_POSTGRES_PASSWORD required}
     security_opt:
       - no-new-privileges:true
-    cap_drop:
-      - ALL
-    cap_add:
-      - CHOWN
-      - SETUID
-      - SETGID
+    user: "70:70"
     deploy:
       resources:
         limits:
@@ -88,7 +83,7 @@ services:
           memory: 512M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:9000/-/health/live/ || exit 1"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:9000/-/health/live/')\" || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -149,7 +144,6 @@ services:
       - TS_ENABLE_HEALTH_CHECK=true
       - TS_LOCAL_ADDR_PORT=127.0.0.1:41234
       - TS_AUTH_ONCE=true
-      - TS_EXTRA_ARGS=--advertise-tags=tag:homelab
     volumes:
       - ../data/ts-authentik:/var/lib/tailscale
       - ./authentik-serve.json:/config/serve.json:ro
