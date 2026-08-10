@@ -1,5 +1,6 @@
 {"TCP": {"443": {"HTTPS": true}},
  "Web": {
+   "${TS_CERT_DOMAIN}:443":              {"Handlers": {"/": {"Proxy": "http://127.0.0.1:8181"}}},
    "ha.${TS_CERT_DOMAIN}:443":         {"Handlers": {"/": {"Proxy": "http://127.0.0.1:8181"}}},
    "grafana.${TS_CERT_DOMAIN}:443":    {"Handlers": {"/": {"Proxy": "http://127.0.0.1:8181"}}},
    "git.${TS_CERT_DOMAIN}:443":        {"Handlers": {"/": {"Proxy": "http://127.0.0.1:8181"}}},
@@ -7,9 +8,10 @@
    "authentik.${TS_CERT_DOMAIN}:443":  {"Handlers": {"/": {"Proxy": "http://127.0.0.1:8181"}}}
  },
  "AllowFunnel": {
+   "${TS_CERT_DOMAIN}:443": true,
    "ha.${TS_CERT_DOMAIN}:443": false,
    "grafana.${TS_CERT_DOMAIN}:443": false,
    "git.${TS_CERT_DOMAIN}:443": false,
    "frigate.${TS_CERT_DOMAIN}:443": false,
-   "authentik.${TS_CERT_DOMAIN}:443": true
+   "authentik.${TS_CERT_DOMAIN}:443": false
  }}

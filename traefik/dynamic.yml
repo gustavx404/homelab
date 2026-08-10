@@ -89,6 +89,13 @@ http:
         - tailscale
       service: authentik
 
+    # Funnel publico: dominio principal roteia p/ Authentik
+    funnel:
+      rule: "Host(`homelab.buru-eagle.ts.net`)"
+      entryPoints:
+        - tailscale
+      service: authentik
+
     frigate-ts:
       rule: "HostRegexp(`^frigate\\..+\\.ts\\.net$`)"
       entryPoints:
