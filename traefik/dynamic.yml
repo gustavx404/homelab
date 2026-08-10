@@ -22,14 +22,6 @@ http:
       stripPrefix:
         prefixes:
           - "/git"
-    strip-photos:
-      stripPrefix:
-        prefixes:
-          - "/photos"
-    strip-vault:
-      stripPrefix:
-        prefixes:
-          - "/vault"
 
   routers:
     homeassistant:
@@ -150,22 +142,6 @@ http:
       middlewares:
         - strip-git
       service: forgejo
-
-    funnel-photos:
-      rule: "Host(`homelab.buru-eagle.ts.net`) && PathPrefix(`/photos`)"
-      entryPoints:
-        - tailscale
-      middlewares:
-        - strip-photos
-      service: immich
-
-    funnel-vault:
-      rule: "Host(`homelab.buru-eagle.ts.net`) && PathPrefix(`/vault`)"
-      entryPoints:
-        - tailscale
-      middlewares:
-        - strip-vault
-      service: vaultwarden
 
   services:
     homeassistant:
