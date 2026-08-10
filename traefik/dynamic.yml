@@ -17,11 +17,8 @@ http:
     frigate-auth:
       basicAuth:
         users:
-          - "frigate:$2y$12$8qbhOjw2gna2jO31S9jvTulqUdzoQdgYWMjqe9lyI6dx9kKYAXMTe"
-    strip-git:
-      stripPrefix:
-        prefixes:
-          - "/git"
+           - "frigate:$2y$12$8qbhOjw2gna2jO31S9jvTulqUdzoQdgYWMjqe9lyI6dx9kKYAXMTe"
+
 
   routers:
     homeassistant:
@@ -134,14 +131,6 @@ http:
       entryPoints:
         - tailscale
       service: authentik
-
-    funnel-git:
-      rule: "Host(`homelab.buru-eagle.ts.net`) && PathPrefix(`/git`)"
-      entryPoints:
-        - tailscale
-      middlewares:
-        - strip-git
-      service: forgejo
 
   services:
     homeassistant:
