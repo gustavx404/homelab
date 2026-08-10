@@ -37,14 +37,14 @@ services:
     networks:
       - backend
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       - TZ=${TZ}
       - COLLECTIONS=crowdsecurity/suricata
       - GID=1000
       - UID=1000
       - CROWDSEC_DB_PASSWORD=${CROWDSEC_DB_PASSWORD:?CROWDSEC_DB_PASSWORD required}
-      - HA_WEBHOOK_ID=${HA_WEBHOOK_ID:-crowdsec_alerts}
+      - HA_WEBHOOK_ID=${HA_WEBHOOK_ID:?HA_WEBHOOK_ID required}
     volumes:
       - ../data/suricata:/var/log/suricata:ro
       - crowdsec_data:/var/lib/crowdsec

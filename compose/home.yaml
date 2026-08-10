@@ -17,9 +17,10 @@ services:
       - HOMEASSISTANT_LATITUDE=${HOMEASSISTANT_LATITUDE}
       - HOMEASSISTANT_LONGITUDE=${HOMEASSISTANT_LONGITUDE}
       - HOMEASSISTANT_ELEVATION=${HOMEASSISTANT_ELEVATION}
-      - MARIADB_USER=${MARIADB_USER}
-      - MARIADB_PASSWORD=${MARIADB_PASSWORD}
-      - MARIADB_DATABASE=${MARIADB_DATABASE}
+    secrets:
+      - MARIADB_USER
+      - MARIADB_PASSWORD
+      - MARIADB_DATABASE
     depends_on:
       mariadb:
         condition: service_healthy
@@ -46,7 +47,7 @@ services:
     environment:
       - TZ=${TZ}
       - ESPHOME_USERNAME=${ESPHOME_USERNAME:-admin}
-      - ESPHOME_PASSWORD=${ESPHOME_PASSWORD:-esphome}
+      - ESPHOME_PASSWORD=${ESPHOME_PASSWORD:?ESPHOME_PASSWORD required}
     deploy:
       resources:
         limits:

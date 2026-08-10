@@ -3,14 +3,11 @@
 #
 # Setup HA (1x, pelo UI):
 #   Criar automacao com trigger webhook:
-#     - Webhook ID: crowdsec_alerts (ou qq string)
+#     - Webhook ID: HA_WEBHOOK_ID (sops-secrets.yaml)
 #     - Acao: chamar notify.mobile_app_* com {{ trigger.json.message }}
-#   Ver setup completo no modelo: homeassistant/automations.yaml (secao crowdsec_webhook)
-#
-# Configurar .env / sops:
-#   HA_WEBHOOK_ID=crowdsec_alerts  (sops-secrets.yaml)
 #
 # Testar: docker exec crowdsec cscli notifications test ha_alerts
+# yamllint disable rule:line-length
 
 type: http
 name: ha_alerts
@@ -21,9 +18,7 @@ max_retry: 3
 timeout: 10s
 
 format: |
-  {"message": "CrowdSec bloqueou {{ len . }} alerta(s).\
-   Cenario: {{ (first .).Scenario }}. Alvo: {{ (first .).Source.IP }}.\
-   Decisao: {{ (first (first .).Decisions).Type }} por {{ (first (first .).Decisions).Duration }}"}
+  {"message": "CrowdSec bloqueou {{ len . }} alerta(s). Cenario: {{ (first .).Scenario }}. Alvo: {{ (first .).Source.IP }}. Decisao: {{ (first (first .).Decisions).Type }} por {{ (first (first .).Decisions).Duration }}"}
 
 url: "http://homeassistant:8123/api/webhook/${HA_WEBHOOK_ID}"
 method: POST
