@@ -238,8 +238,8 @@ apontando `192.168.20.189`). Devem bater com `traefik/dynamic.yml`.
 ## Banco de dados (MariaDB)
 
 Banco central compartilhado — `compose/database.yaml`, rede `backend`.
-Bancos e usuarios criados no primeiro boot por `database-init/01-create-app-databases.sh`
-(exceto Home Assistant, provisionado pelo entrypoint do MariaDB).
+Bancos e usuarios criados no primeiro boot (MariaDB entrypoint p/ o banco
+`homeassistant`; `database-init/01-create-app-databases.sh` p/ os demais).
 
 | app | banco | usuario | secret SOPS |
 |---|---|---|---|
