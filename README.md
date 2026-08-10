@@ -243,8 +243,15 @@ apontando `192.168.20.189`). Devem bater com `traefik/dynamic.yml`.
 | Mumble (murmur) | mumble | mumble |
 
 Bancos criados no primeiro boot por `database-init/01-create-app-databases.sh`.
-Senhas no SOPS: `FORGEJO_DB_PASSWORD`, `GRAFANA_DB_PASSWORD`, `CROWDSEC_DB_PASSWORD`,
-`MUMBLE_DB_PASSWORD`.
+Senhas no SOPS:
+
+| app | secret | mecanismo |
+|---|---|---|
+| Home Assistant | `MARIADB_USER` / `MARIADB_PASSWORD` | Secret Docker `RECORDER_DB_URL` (connection string) |
+| Forgejo | `FORGEJO_DB_PASSWORD` | env var no compose |
+| Grafana | `GRAFANA_DB_PASSWORD` | env var no compose |
+| CrowdSec | `CROWDSEC_DB_PASSWORD` | env var no compose |
+| Mumble | `MUMBLE_DB_PASSWORD` | env var `MUMBLE_CONFIG_dbPassword` |
 
 Mumble usa o banco central via backend MySQL (`QMYSQL`). Dados antigos do
 SQLite nao sao migrados — backup em `data/mumble/mumble-server.sqlite`.
