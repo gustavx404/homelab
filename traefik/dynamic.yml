@@ -126,6 +126,7 @@ http:
       loadBalancer:
         servers:
           - url: "http://authentik-server:9000"
+        passHostHeader: true
 
     frigate:
       loadBalancer:

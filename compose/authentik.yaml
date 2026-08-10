@@ -51,9 +51,11 @@ services:
       retries: 5
 
   server:
-    image: ghcr.io/goauthentik/server:2026.5.6
+    image: ghcr.io/goauthentik/server:2024.12.3
     container_name: authentik-server
     command: server
+    ports:
+      - "127.0.0.1:9100:9000"
     networks:
       - backend
     volumes:
@@ -90,7 +92,7 @@ services:
       start_period: 30s
 
   worker:
-    image: ghcr.io/goauthentik/server:2026.5.6
+    image: ghcr.io/goauthentik/server:2024.12.3
     container_name: authentik-worker
     command: worker
     networks:
