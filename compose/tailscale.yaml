@@ -1,0 +1,40 @@
+---
+# Tailscale — acesso remoto seguro via WireGuard mesh
+# Expoe a LAN (192.168.20.0/24) e a rede Docker backend como subnet routes
+# p/ iPhone e outros dispositivos acessarem o homelab de qualquer lugar.
+#
+# Setup (1x):
+#   1. Crie uma auth key em https://login.tailscale.com/admin/settings/keys
+#      (reusable, ephemeral=false, pre-approved=true, tags=tag:homelab)
+#   2. Adicione ao sops: sops compose/sops-secrets.yaml -> TAILSCALE_AUTHKEY
+#   3. Aprove as subnet routes no admin console apos o primeiro start
+#      (Machine details > Edit route settings > 192.168.20.0/24 + 172.19.0.0/16)
+#
+# O container usa TUN device e precisa de NET_ADMIN + /dev/net/tun.
+
+services:
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: tailscale
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - ../data/tailscale:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - TS_AUTHKEY=${TAILSCALE_AUTHKEY:?TAILSCALE_AUTHKEY required}
+      - TS_HOSTNAME=homelab
+      - TS_ROUTES=192.168.20.0/24,172.19.0.0/16
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "tailscale status --json > /dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

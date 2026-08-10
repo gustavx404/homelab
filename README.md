@@ -1,9 +1,9 @@
 # homelab
 
-Infraestrutura auto-hospedada — Docker Compose, 13 servicos, rede zero-confianca.
+Infraestrutura auto-hospedada — Docker Compose, 14 servicos, rede zero-confianca.
 
 [![CI](https://github.com/gustavx404/homelab/actions/workflows/ci.yaml/badge.svg)](https://github.com/gustavx404/homelab/actions)
-[![servicos](https://img.shields.io/badge/servicos-13-3b82f6?style=flat-square)]()
+[![servicos](https://img.shields.io/badge/servicos-14-3b82f6?style=flat-square)]()
 [![suricata](https://img.shields.io/badge/suricata-12-6b7280?style=flat-square)]()
 [![secrets](https://img.shields.io/badge/secrets-sops%2Bage-6b7280?style=flat-square)]()
 
@@ -11,32 +11,160 @@ Infraestrutura auto-hospedada — Docker Compose, 13 servicos, rede zero-confian
 
 ## Arquitetura
 
-```
-Internet → OpenWrt (borda + CrowdSec bouncer)
-                │
-                ▼  :80 :443
-           ┌─────────────┐
-           │  Traefik v3  │  proxy reverso · hostname-based routing
-           │              │
-           │  ha.home      → Home Assistant
-           │  grafana.home → Grafana
-           │  git.home     → Forgejo
-           │  frigate.home → Frigate (NVR)
-           └──────┬───────┘
-                  │  backend network (br-homelab)
-     ┌────────┬───┴───┬────────┬────────┬────────┬────────┐
-     ▼        ▼       ▼        ▼        ▼        ▼        ▼
-  mariadb  grafana prometheus forgejo  mumble  crowdsec  frigate
-     └────────┴───────┴───┬────┴────────┴────┬───┘
-                     host network             ▼
-               suricata · esphome       LAPI :8080
-               (eno1)     (:6052)       (→ OpenWrt)
-               suricata-stats (backend, :8899 interno)
+```mermaid
+flowchart TB
+    subgraph Internet["Internet"]
+        iPhone["iPhone (Tailscale)"]
+    end
+
+    subgraph Edge["Borda — OpenWrt"]
+        DNS["dnsmasq · DNS"]
+        Bouncer["CrowdSec bouncer"]
+    end
+
+    subgraph Host["Host — 192.168.20.189"]
+        Tailscale["Tailscale<br/>subnet router"]
+        direction TB
+        Traefik["Traefik v3<br/>:80 :443"]
+        
+        subgraph Backend["backend network (br-homelab)"]
+            direction LR
+            HA["Home Assistant"]
+            Grafana["Grafana"]
+            Forgejo["Forgejo"]
+            Frigate["Frigate NVR"]
+            Prometheus["Prometheus"]
+            MariaDB["MariaDB"]
+            CrowdSec["CrowdSec"]
+            Mumble["Mumble VoIP"]
+            Kali["Kali"]
+        end
+        
+        subgraph HostNet["host network"]
+            Suricata["Suricata IDS"]
+            ESPHome["ESPHome"]
+        end
+    end
+
+    iPhone -->|"WireGuard mesh"| Tailscale
+    Tailscale -->|"subnet routes<br/>192.168.20.0/24"| Backend
+    Internet -->|":80 :443"| Traefik
+    Traefik -->|"hostname routing"| HA
+    Traefik --> Grafana
+    Traefik --> Forgejo
+    Traefik --> Frigate
+    CrowdSec -->|"LAPI :8080"| Bouncer
+    HA -->|"recorder"| MariaDB
+    Forgejo -->|"repo data"| MariaDB
+    Grafana -->|"dashboards"| MariaDB
+    CrowdSec -->|"decisions"| MariaDB
+    Prometheus -->|"scrape"| HA
+    Prometheus -->|"scrape"| Grafana
+    Prometheus -->|"scrape"| Forgejo
 ```
 
-- Traefik e o unico ponto de entrada HTTP/S. Todos os apps web passam por ele.
-- Suricata e ESPHome usam `network_mode: host` por necessidade (packet capture / mDNS).
-- CrowdSec envia decisoes de ban para o OpenWrt na borda da rede.
+- **Traefik** e o unico ponto de entrada HTTP/S. Roteia por hostname (`ha.home`, `grafana.home`, `git.home`, `frigate.home`).
+- **Tailscale** cria uma mesh WireGuard e expoe toda a LAN como subnet routes — iPhone acessa o lab de qualquer lugar sem portas abertas no roteador.
+- **MariaDB** e o banco central, compartilhado por Home Assistant (recorder), Forgejo, Grafana e CrowdSec.
+- **Suricata + ESPHome** usam `network_mode: host` (packet capture / mDNS).
+- **CrowdSec** envia bans para o OpenWrt na borda via LAPI.
+
+---
+
+## Acesso Remoto (Tailscale)
+
+O container `tailscale` (`compose/tailscale.yaml`) atua como **subnet router**, expondo a
+LAN (`192.168.20.0/24`) e a rede Docker (`172.19.0.0/16`) para qualquer dispositivo
+na sua rede Tailscale.
+
+### Setup
+
+1. **Crie uma auth key** em https://login.tailscale.com/admin/settings/keys
+   - Reusable, ephemeral=false, pre-approved=true
+   - Tags: `tag:homelab`
+
+2. **Adicione ao sops**:
+   ```bash
+   sops compose/sops-secrets.yaml
+   # TAILSCALE_AUTHKEY: tskey-auth-xxx...
+   bash scripts/decrypt-secrets.sh
+   ```
+
+3. **Subir**:
+   ```bash
+   docker compose -f compose/compose.yaml up -d tailscale
+   ```
+
+4. **Aprovar subnet routes** no admin console:
+   - Va em Machines > homelab > Edit route settings
+   - Aprove `192.168.20.0/24` e `172.19.0.0/16`
+
+### Uso no iPhone
+
+1. Instale o app **Tailscale** (App Store)
+2. Faca login na mesma conta
+3. Pronto — acesse `https://ha.home`, `https://grafana.home`, etc. como se estivesse em casa
+4. O MagicDNS do Tailscale tambem da nomes estaveis (`homelab.tail-xxxx.ts.net`)
+
+---
+
+## HomeKit / Apple Home
+
+A integracao `homekit:` do Home Assistant expoe dispositivos como acessorios
+HomeKit, controlaveis pelo app **Casa** e por **Siri** no iPhone/iPad/Apple TV.
+
+### Pre-requisito: avahi-reflector (mDNS entre Docker e LAN)
+
+HomeKit usa Bonjour (mDNS) para descobrir a bridge. Como o HA esta na rede
+Docker bridge, o mDNS nao alcanca a LAN por padrao. Solucao: reflector no host.
+
+```bash
+sudo apt install avahi-daemon
+sudo sed -i 's/#enable-reflector=no/enable-reflector=yes/' /etc/avahi/avahi-daemon.conf
+sudo systemctl restart avahi-daemon
+```
+
+### Usando
+
+Apos subir o HA com o bloco `homekit:` no `configuration.yaml`:
+
+1. No iPhone, abra o app **Casa**
+2. Toque em **+** > Adicionar Acessorio
+3. Escaneie o QR code que aparece em:
+   HA > Configuracoes > Dispositivos e servicos > HomeKit Bridge
+4. Controle dispositivos pelo app Casa ou diga "Hey Siri, acenda a luz"
+
+---
+
+## HA Companion App
+
+O `default_config:` do Home Assistant ja inclui `mobile_app:` — o app Companion
+funciona sem config adicional no servidor.
+
+### Instalar no iPhone
+
+1. App Store: **Home Assistant Companion**
+2. Login: `https://ha.home` (LAN) ou o IP Tailscale (remoto)
+3. Permita notificacoes push e localizacao
+
+### Sensores uteis (automaticos)
+
+| sensor | descricao |
+|--------|-----------|
+| `sensor.iphone_battery_level` | Nivel da bateria |
+| `sensor.iphone_battery_state` | Carregando / Nao carregando |
+| `device_tracker.iphone` | Localizacao GPS (p/ automacoes de presenca) |
+| `sensor.iphone_steps` | Passos (HealthKit) |
+| `sensor.iphone_ssid` | Rede Wi-Fi atual |
+| `sensor.iphone_focus` | Modo Foco (Trabalho, Pessoal, etc.) |
+| `binary_sensor.iphone_focus_Driving` | Esta dirigindo? |
+
+### Notificacoes
+
+As automacoes do HA usam `notify.notify` (envia p/ todos os destinos:
+Companion App, persistent_notification, etc.). Para notificar so no iPhone,
+substitua por `notify.mobile_app_iphone` nos arquivos `automations.yaml` e
+`scripts.yaml`.
 
 ---
 
@@ -45,9 +173,13 @@ Internet → OpenWrt (borda + CrowdSec bouncer)
 ```bash
 # dependencias
 curl -fsSL https://get.docker.com -o get-docker.sh && sudo sh ./get-docker.sh
-sudo apt install -y docker-compose-v2 age yamllint
+sudo apt install -y docker-compose-v2 age yamllint avahi-daemon
 curl -LO https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.linux.amd64
 sudo install -m 755 sops-v3.13.3.linux.amd64 /usr/local/bin/sops
+
+# avahi-reflector p/ HomeKit (mDNS entre Docker e LAN)
+sudo sed -i 's/#enable-reflector=no/enable-reflector=yes/' /etc/avahi/avahi-daemon.conf
+sudo systemctl enable --now avahi-daemon
 
 # gerar chave age e copiar chave publica para .sops.yaml
 age-keygen -o ~/.config/sops/age/keys.txt
@@ -94,6 +226,7 @@ A lista de hostnames precisa bater com as rotas em `traefik/dynamic.yml`.
 | monitoring | prometheus | `v3.4.0` | `127.0.0.1:9090` |
 | monitoring | grafana | `11.6.0` | interno |
 | media | frigate | `stable` | interno |
+| network | tailscale | `latest` | subnet router |
 
 ### Banco de dados (MariaDB)
 
@@ -122,6 +255,7 @@ suporte a MySQL, evita dependencia no banco central).
 compose/
 ├── compose.yaml        principal (include)
 ├── network.yaml        rede + secrets
+├── tailscale.yaml      acesso remoto (subnet router WireGuard)
 ├── database.yaml       mariadb (banco central: HA · forgejo · grafana · crowdsec)
 ├── database-init/      01-create-app-databases.sh (bancos/usuarios no primeiro boot)
 ├── home.yaml           homeassistant · esphome
@@ -234,6 +368,7 @@ docker exec kali nmap -sS -p 1-100 <host>     # teste
 | `8555` | frigate | WebRTC tcp/udp |
 
 Nenhum app web exposto diretamente — tudo passa pelo Traefik.
+Tailscale nao expoe porta — conexao outbound WireGuard com NAT traversal.
 
 ---
 
@@ -243,11 +378,12 @@ Nenhum app web exposto diretamente — tudo passa pelo Traefik.
 - prometheus vinculado apenas a `127.0.0.1` (metricas internas)
 - mariadb isolado na rede `backend`
 - secrets encriptados com SOPS + age (`.env` gitignored)
-- `network_mode: host` apenas onde necessario
+- `network_mode: host` apenas onde necessario (suricata, esphome, tailscale)
 - `suricata-stats` le o `eve.json` somente-leitura (rede `backend`, porta interna, sem bind)
 - `no-new-privileges:true` nos containers host
 - healthchecks e resource limits em todos os containers
 - CI: yamllint, compose-validate, trivy config, trivy cve (9 imagens)
+- Tailscale: auth key ephemeral, subnet routes aprovadas manualmente no admin console
 
 ---
 
@@ -287,6 +423,7 @@ docker compose -f compose/compose.yaml up -d
 | projeto | autor |
 |---------|-------|
 | [EASUN SMG II 11Kw ESPHome](https://github.com/robgt978/Easun-SMG-II-11Kw-esphome-) | robgt978 |
+| [Tailscale](https://tailscale.com/) | Tailscale Inc. |
 | [Suricata](https://suricata.io/) | OISF |
 | [CrowdSec](https://github.com/crowdsecurity/crowdsec) | CrowdSec |
 | [Mumble](https://github.com/mumble-voip/mumble) | Mumble VoIP |
