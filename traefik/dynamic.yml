@@ -1,5 +1,6 @@
 # Traefik dynamic configuration — hostname-based routing
-# DNS: 192.168.20.189 ha.home grafana.home git.home frigate.home authentik.home
+# DNS local: 192.168.20.189 ha.home grafana.home git.home frigate.home authentik.home
+# DNS Tailscale: ha.<tailnet>.ts.net grafana.<tailnet>.ts.net etc. (serve config)
 
 http:
   middlewares:
@@ -20,7 +21,7 @@ http:
 
   routers:
     homeassistant:
-      rule: "Host(`ha.home`)"
+      rule: "Host(`ha.home`) || HostRegexp(`^ha\\..+\\.ts\\.net$`)"
       entryPoints:
         - websecure
       middlewares:
@@ -29,28 +30,28 @@ http:
       tls: {}
 
     grafana:
-      rule: "Host(`grafana.home`)"
+      rule: "Host(`grafana.home`) || HostRegexp(`^grafana\\..+\\.ts\\.net$`)"
       entryPoints:
         - websecure
       service: grafana
       tls: {}
 
     forgejo:
-      rule: "Host(`git.home`)"
+      rule: "Host(`git.home`) || HostRegexp(`^git\\..+\\.ts\\.net$`)"
       entryPoints:
         - websecure
       service: forgejo
       tls: {}
 
     authentik:
-      rule: "Host(`authentik.home`)"
+      rule: "Host(`authentik.home`) || HostRegexp(`^authentik\\..+\\.ts\\.net$`)"
       entryPoints:
         - websecure
       service: authentik
       tls: {}
 
     frigate:
-      rule: "Host(`frigate.home`)"
+      rule: "Host(`frigate.home`) || HostRegexp(`^frigate\\..+\\.ts\\.net$`)"
       entryPoints:
         - websecure
       middlewares:

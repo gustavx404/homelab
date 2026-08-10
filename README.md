@@ -229,16 +229,26 @@ bash scripts/decrypt-secrets.sh                # gera compose/.env
 docker compose -f compose/compose.yaml up -d
 ```
 
-**DNS**: hostnames `.home` resolvem via dnsmasq do OpenWrt (LuCI > `/etc/hosts`
+**DNS local**: hostnames `.home` resolvem via dnsmasq do OpenWrt (LuCI > `/etc/hosts`
 apontando `192.168.20.189`). Devem bater com `traefik/dynamic.yml`.
 
-| hostname | servico |
-|---|---|
-| `ha.home` | Home Assistant |
-| `grafana.home` | Grafana |
-| `git.home` | Forgejo |
-| `frigate.home` | Frigate (NVR) |
-| `authentik.home` | Authentik (IdP/SSO) |
+**DNS Tailscale**: MagicDNS fornece dominios `<servico>.homelab.<tailnet>.ts.net`
+via Tailscale Serve (config em `compose/tailscale-serve.json`). Acessiveis de
+qualquer dispositivo no tailnet sem VPN extra, sem porta aberta, sem DNS local.
+
+| hostname | servico | local | Tailscale |
+|---|---|---|---|
+| `ha.home` | Home Assistant | :white_check_mark: | `ha.homelab.<tailnet>.ts.net` |
+| `grafana.home` | Grafana | :white_check_mark: | `grafana.homelab.<tailnet>.ts.net` |
+| `git.home` | Forgejo | :white_check_mark: | `git.homelab.<tailnet>.ts.net` |
+| `frigate.home` | Frigate (NVR) | :white_check_mark: | `frigate.homelab.<tailnet>.ts.net` |
+| `authentik.home` | Authentik (IdP/SSO) | :white_check_mark: | `authentik.homelab.<tailnet>.ts.net` |
+| `mumble://100.73.57.112:64738` | Mumble (VoIP) | Tailscale IP | direto (protocolo proprio) |
+
+> Para acesso **publico** (internet, sem Tailscale): habilite Funnel no
+> [admin console](https://login.tailscale.com/admin/dns) > Domains > Enable HTTPS
+> Certificates + Funnel. Depois troque `false` por `true` nos dominios desejados
+> em `compose/tailscale-serve.json`.
 
 ---
 
