@@ -2,13 +2,13 @@
   <h1 align="center">homelab</h1>
   <p align="center">
     <b>Infraestrutura auto-hospedada</b><br>
-    Docker Compose &middot; 24 servicos &middot; Zero-confianca
+    Docker Compose &middot; 28 servicos &middot; Zero-confianca
   </p>
 </p>
 
 <p align="center">
   <a href="https://github.com/gustavx404/homelab/actions"><img src="https://github.com/gustavx404/homelab/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/servicos-24-3b82f6?style=flat-square" alt="24 servicos">
+  <img src="https://img.shields.io/badge/servicos-28-3b82f6?style=flat-square" alt="28 servicos">
   <img src="https://img.shields.io/badge/suricata-12_asssinaturas-6b7280?style=flat-square" alt="Suricata 12 assinaturas">
   <img src="https://img.shields.io/badge/secrets-sops%2Bage-6b7280?style=flat-square" alt="SOPS + age">
 </p>
@@ -35,7 +35,7 @@
 - [Acesso Remoto](#acesso-remoto-tailscale) — Tailscale (WireGuard mesh)
 - [Apple](#apple) — HomeKit, Siri, Companion App
 - [Instalacao](#instalacao) — do zero ao ar em 5 minutos
-- [Servicos](#servicos) — catalogo completo com 24 containers
+- [Servicos](#servicos) — catalogo completo com 28 containers
 - [Autenticacao (Authentik)](#autenticacao-authentik) — IdP/SSO + sidecar ScaleTail
 - [Banco de dados](#banco-de-dados-mariadb) — MariaDB central
 - [Estrutura](#estrutura) — arvore de diretorios
@@ -170,16 +170,17 @@ O container `tailscale` atua como **subnet router**, expondo a LAN
 
 </details>
 
-### ScaleTail (sidecar)
+### ScaleTail (sidecars)
 
 O [ScaleTail](https://github.com/tailscale-dev/ScaleTail) e um conjunto de configs
 Docker Compose com sidecar Tailscale — cada servico ganha URL propria
 `https://<app>.<tailnet>.ts.net` via **Tailscale Serve** (HTTPS automatico, sem portas
-abertas). No homelab, o Authentik ja usa esse padrao (`ts-authentik` no stack `auth`).
+abertas). No homelab, 5 servicos usam sidecars dedicados: Authentik, Home Assistant,
+Forgejo, Immich e Vaultwarden. Cada um tem seu proprio `*-serve.json` e auth key
+reutilizavel com tags `tag:homelab` (ja no sops como `TAILSCALE_AUTHKEY`).
 
-Para adicionar em outro servico: sidecar `ts-<app>` com `TS_SERVE_CONFIG` apontando para
-o container (ex.: `http://app:PORTA`), auth key reutilizavel com tags `tag:homelab`
-(ja no sops como `TAILSCALE_AUTHKEY`) e MagicDNS habilitado na conta.
+O subnet router (`tailscale.yaml`) complementa os sidecars, expondo a LAN e a rede
+Docker para servicos sem sidecar proprio (Grafana, Frigate, Prometheus, etc).
 
 > **iPhone**: instale o app Tailscale, faca login na mesma conta — `https://ha.home`,
 > `https://grafana.home`, etc. funcionam como se estivesse em casa.
@@ -243,19 +244,22 @@ docker compose -f compose/compose.yaml up -d
 **DNS local**: hostnames `.home` resolvem via dnsmasq do OpenWrt (LuCI > `/etc/hosts`
 apontando `192.168.20.189`). Devem bater com `traefik/dynamic.yml`.
 
-**DNS Tailscale**: MagicDNS fornece dominios `<servico>.homelab.<tailnet>.ts.net`
-via Tailscale Serve (config em `compose/tailscale-serve.json`). Acessiveis de
-qualquer dispositivo no tailnet sem VPN extra, sem porta aberta, sem DNS local.
+**DNS Tailscale**: cada servico com sidecar Tailscale tem node proprio no tailnet
+(`ha.<tailnet>.ts.net`, `git.<tailnet>.ts.net`, `photos.<tailnet>.ts.net`,
+`vault.<tailnet>.ts.net`, `authentik.<tailnet>.ts.net`). O subnet router
+(`homelab.<tailnet>.ts.net`) expoe a LAN e a rede Docker para servicos sem
+sidecar dedicado. Acesseis de qualquer dispositivo no tailnet sem VPN extra,
+sem porta aberta, sem DNS local.
 
 | hostname | servico | local | Tailscale |
 |---|---|---|---|
-| `ha.home` | Home Assistant | :white_check_mark: | `ha.homelab.<tailnet>.ts.net` |
-| `grafana.home` | Grafana | :white_check_mark: | `grafana.homelab.<tailnet>.ts.net` |
-| `git.home` | Forgejo | :white_check_mark: | `git.homelab.<tailnet>.ts.net` |
-| `frigate.home` | Frigate (NVR) | :white_check_mark: | `frigate.homelab.<tailnet>.ts.net` |
-| `authentik.home` | Authentik (IdP/SSO) | :white_check_mark: | `authentik.homelab.<tailnet>.ts.net` |
-| `photos.home` | Immich (fotos/videos) | :white_check_mark: | `photos.homelab.<tailnet>.ts.net` |
-| `vault.home` | Vaultwarden (senhas) | :white_check_mark: | `vault.homelab.<tailnet>.ts.net` |
+| `ha.home` | Home Assistant | :white_check_mark: | `ha.<tailnet>.ts.net` |
+| `grafana.home` | Grafana | :white_check_mark: | — |
+| `git.home` | Forgejo | :white_check_mark: | `git.<tailnet>.ts.net` |
+| `frigate.home` | Frigate (NVR) | :white_check_mark: | — |
+| `authentik.home` | Authentik (IdP/SSO) | :white_check_mark: | `authentik.<tailnet>.ts.net` |
+| `photos.home` | Immich (fotos/videos) | :white_check_mark: | `photos.<tailnet>.ts.net` |
+| `vault.home` | Vaultwarden (senhas) | :white_check_mark: | `vault.<tailnet>.ts.net` |
 | `mumble://100.73.57.112:64738` | Mumble (VoIP) | Tailscale IP | direto (protocolo proprio) |
 
 > Para acesso **publico** (internet, sem Tailscale): habilite Funnel no
@@ -290,9 +294,13 @@ qualquer dispositivo no tailnet sem VPN extra, sem porta aberta, sem DNS local.
 | network | tailscale | `latest` | subnet router | host |
 | auth | postgres | `16-alpine` | interno | backend |
 | auth | redis | `7-alpine` | interno | backend |
-| auth | server | `2026.5.6` | `9000` interno | backend |
+| auth | server | `2026.5.6` | `9100` interno | backend |
 | auth | worker | `2026.5.6` | — | backend |
 | auth | ts-authentik | `latest` | `https://authentik.<tailnet>.ts.net` | backend |
+| home | ts-homeassistant | `latest` | `https://ha.<tailnet>.ts.net` | backend |
+| services | ts-forgejo | `latest` | `https://git.<tailnet>.ts.net` | backend |
+| immich | ts-immich | `latest` | `https://photos.<tailnet>.ts.net` | backend |
+| vaultwarden | ts-vaultwarden | `latest` | `https://vault.<tailnet>.ts.net` | backend |
 
 ---
 
@@ -500,8 +508,13 @@ compose/
 ├── immich.yaml            immich (fotos) + postgres/valkey proprios
 ├── vaultwarden.yaml       vaultwarden (senhas, MariaDB central)
 ├── services.yaml          traefik · forgejo · mumble · kali
-├── authentik.yaml        authentik (IdP/SSO) + sidecar ScaleTail
-├── authentik-serve.json  serve config do sidecar (ScaleTail)
+├── authentik.yaml         authentik (IdP/SSO) + sidecar ScaleTail
+├── tailscale-serve.json   serve config do subnet router (Funnel)
+├── authentik-serve.json   serve config do sidecar authentik
+├── ha-serve.json          serve config do sidecar homeassistant
+├── forgejo-serve.json     serve config do sidecar forgejo
+├── immich-serve.json      serve config do sidecar immich
+├── vaultwarden-serve.json serve config do sidecar vaultwarden
 ├── .env.example           template
 ├── sops-secrets.yaml      encriptado (SOPS + age)
 └── sops-secrets.template.yaml
@@ -514,7 +527,7 @@ homeassistant/  HA + ESPHome
 monitoring/  prometheus + grafana dashboards
 data/        volumes persistentes (mount de todos os containers; alvo do backup)
 .github/     CI (yamllint · compose validate · trivy config e imagem)
-scripts/     init-sops · decrypt-secrets · authentik-oidc-setup · update-suricata-rules · suricata-stats · mumble-setup
+scripts/     init-sops · decrypt-secrets · authentik-oidc-setup (sh + py) · update-suricata-rules · suricata-stats · mumble-setup
 ```
 
 Stacks podem subir individualmente com `compose/network.yaml` (obrigatorio) +
