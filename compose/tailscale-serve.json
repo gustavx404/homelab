@@ -56,12 +56,12 @@
     }
   },
   "AllowFunnel": {
-    "${TS_CERT_DOMAIN}:443": false,
-    "ha.${TS_CERT_DOMAIN}:443": false,
-    "grafana.${TS_CERT_DOMAIN}:443": false,
-    "git.${TS_CERT_DOMAIN}:443": false,
-    "frigate.${TS_CERT_DOMAIN}:443": false,
-    "photos.${TS_CERT_DOMAIN}:443": false,
-    "vault.${TS_CERT_DOMAIN}:443": false
+    "${TS_CERT_DOMAIN}:443": true,
+    "ha.${TS_CERT_DOMAIN}:443": true,
+    "grafana.${TS_CERT_DOMAIN}:443": true,
+    "git.${TS_CERT_DOMAIN}:443": true,
+    "frigate.${TS_CERT_DOMAIN}:443": true,
+    "photos.${TS_CERT_DOMAIN}:443": true,
+    "vault.${TS_CERT_DOMAIN}:443": true
   }
 }
