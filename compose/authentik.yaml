@@ -122,7 +122,7 @@ services:
           memory: 256M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'celery' > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "ps aux | grep -q '[a]k worker' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
