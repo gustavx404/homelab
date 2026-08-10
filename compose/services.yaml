@@ -12,6 +12,10 @@ services:
       - "192.168.20.189:443:443"
       # Tailscale Serve/Funnel (host-network container alcanca 127.0.0.1)
       - "127.0.0.1:8181:8181"
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ../traefik/traefik.yml:/etc/traefik/traefik.yml:ro
@@ -34,10 +38,12 @@ services:
     networks:
       - backend
     ports:
-      - "2222:22"
+      - "192.168.20.189:2222:22"
     volumes:
       - ../data/forgejo:/data
       - /etc/localtime:/etc/localtime:ro
+    extra_hosts:
+      - "authentik.home:host-gateway"
     environment:
       - FORGEJO__database__DB_TYPE=mysql
       - FORGEJO__database__HOST=mariadb:3306
@@ -46,6 +52,13 @@ services:
       - FORGEJO__database__PASSWD=${FORGEJO_DB_PASSWORD:?FORGEJO_DB_PASSWORD required}
       - FORGEJO__server__ROOT_URL=https://git.home/
       - FORGEJO__metrics__ENABLED=true
+      # SSO via Authentik (OIDC). Provider criado por scripts/authentik-oidc-setup.py
+      - FORGEJO__oauth2__ENABLED=true
+      - FORGEJO__oauth2__NAME=Authentik
+      - FORGEJO__oauth2__PROVIDER=openidConnect
+      - FORGEJO__oauth2__KEY=${FORGEJO_OIDC_CLIENT_ID:?FORGEJO_OIDC_CLIENT_ID required}
+      - FORGEJO__oauth2__SECRET=${FORGEJO_OIDC_CLIENT_SECRET:?FORGEJO_OIDC_CLIENT_SECRET required}
+      - FORGEJO__oauth2__AUTO_DISCOVERY_URL=https://authentik.home/application/o/forgejo/.well-known/openid-configuration
     deploy:
       resources:
         limits:
@@ -57,14 +70,48 @@ services:
       timeout: 10s
       retries: 5
 
+  # Tailscale Funnel dedicado p/ Forgejo (node proprio = DNS publico)
+  ts-forgejo:
+    image: tailscale/tailscale:latest
+    container_name: ts-forgejo
+    hostname: git
+    networks:
+      - backend
+    volumes:
+      - ../data/ts-forgejo:/var/lib/tailscale
+      - ../compose/forgejo-serve.json:/config/serve.json:ro
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - TS_AUTHKEY=${TAILSCALE_AUTHKEY:?TAILSCALE_AUTHKEY required}
+      - TS_HOSTNAME=git
+      - TS_CERT_DOMAIN=git.buru-eagle.ts.net
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_SERVE_CONFIG=/config/serve.json
+      - TS_USERSPACE=false
+      - TS_AUTH_ONCE=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "tailscale status --json > /dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
   mumble:
     image: mumblevoip/mumble-server:latest
     container_name: mumble
     networks:
       - backend
     ports:
-      - "64738:64738"
-      - "64738:64738/udp"
+      - "192.168.20.189:64738:64738"
+      - "192.168.20.189:64738:64738/udp"
     volumes:
       - ../data/mumble:/data
     environment:
@@ -86,6 +133,8 @@ services:
       MUMBLE_CONFIG_defaultchannel: "0"
       MUMBLE_CONFIG_rememberchannel: "false"
       MUMBLE_SUPERUSER_PASSWORD: "${MUMBLE_CONFIG_supw}"
+    cap_drop:
+      - ALL
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -112,6 +161,8 @@ services:
     cap_add:
       - NET_RAW
       - NET_ADMIN
+    cap_drop:
+      - ALL
     security_opt:
       - no-new-privileges:true
     command:

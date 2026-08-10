@@ -4,6 +4,16 @@
 
 http:
   middlewares:
+    sec-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        forceSTSHeader: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "strict-origin-when-cross-origin"
+        customFrameOptionsValue: "SAMEORIGIN"
+        permissionsPolicy: "camera=(), microphone=(), geolocation=()"
     ha-headers:
       headers:
         customRequestHeaders:
@@ -34,6 +44,8 @@ http:
       rule: "Host(`grafana.home`) || HostRegexp(`^grafana\\..+\\.ts\\.net$`)"
       entryPoints:
         - websecure
+      middlewares:
+        - sec-headers
       service: grafana
       tls: {}
 
@@ -41,6 +53,8 @@ http:
       rule: "Host(`git.home`) || HostRegexp(`^git\\..+\\.ts\\.net$`)"
       entryPoints:
         - websecure
+      middlewares:
+        - sec-headers
       service: forgejo
       tls: {}
 
@@ -48,6 +62,8 @@ http:
       rule: "Host(`authentik.home`) || HostRegexp(`^authentik\\..+\\.ts\\.net$`)"
       entryPoints:
         - websecure
+      middlewares:
+        - sec-headers
       service: authentik
       tls: {}
 
@@ -65,6 +81,8 @@ http:
       rule: "Host(`photos.home`) || HostRegexp(`^photos\\..+\\.ts\\.net$`)"
       entryPoints:
         - websecure
+      middlewares:
+        - sec-headers
       service: immich
       tls: {}
 
@@ -72,6 +90,8 @@ http:
       rule: "Host(`vault.home`) || HostRegexp(`^vault\\..+\\.ts\\.net$`)"
       entryPoints:
         - websecure
+      middlewares:
+        - sec-headers
       service: vaultwarden
       tls: {}
 

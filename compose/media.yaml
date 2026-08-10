@@ -8,9 +8,9 @@ services:
     networks:
       - backend
     ports:
-      - "8554:8554"     # RTSP restream (players externos) — restringir no firewall
-      - "8555:8555/tcp"  # WebRTC (UI) — restringir no firewall
-      - "8555:8555/udp"  # WebRTC (UI) — restringir no firewall
+      - "192.168.20.189:8554:8554"  # RTSP restream (players externos) — restringir no firewall
+      - "192.168.20.189:8555:8555/tcp"  # WebRTC (UI) — restringir no firewall
+      - "192.168.20.189:8555:8555/udp"  # WebRTC (UI) — restringir no firewall
     volumes:
       - ../data/frigate:/config
       - ../frigate/config.yml:/config/config.yml

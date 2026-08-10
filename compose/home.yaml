@@ -10,13 +10,19 @@ services:
       - backend
     volumes:
       - ../data/homeassistant:/config
+      - ../homeassistant/custom_components:/config/custom_components:ro
       - /etc/localtime:/etc/localtime:ro
       - ../homeassistant/ha-entrypoint.sh:/ha-entrypoint.sh:ro
+    extra_hosts:
+      - "authentik.home:host-gateway"
     environment:
       - TZ=${TZ}
       - HOMEASSISTANT_LATITUDE=${HOMEASSISTANT_LATITUDE}
       - HOMEASSISTANT_LONGITUDE=${HOMEASSISTANT_LONGITUDE}
       - HOMEASSISTANT_ELEVATION=${HOMEASSISTANT_ELEVATION}
+      # SSO OIDC — secrets p/ auth_oidc
+      - HA_OIDC_CLIENT_ID=${HA_OIDC_CLIENT_ID:?HA_OIDC_CLIENT_ID required}
+      - HA_OIDC_CLIENT_SECRET=${HA_OIDC_CLIENT_SECRET:?HA_OIDC_CLIENT_SECRET required}
     secrets:
       - MARIADB_USER
       - MARIADB_PASSWORD
@@ -24,6 +30,10 @@ services:
     depends_on:
       mariadb:
         condition: service_healthy
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:

@@ -33,3 +33,10 @@ http:
 #   (Configuracoes > Dispositivos e servicos > HomeKit Bridge no HA)
 homekit:
   advertise_ip: "192.168.20.189"
+
+# SSO via Authentik (OIDC) — hass-oidc-auth
+# Provider criado por scripts/authentik-oidc-setup.py
+auth_oidc:
+  client_id: !secret ha_oidc_client_id
+  client_secret: !secret ha_oidc_client_secret
+  issuer: https://authentik.home/application/o/homeassistant

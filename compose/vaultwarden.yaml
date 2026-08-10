@@ -36,6 +36,8 @@ services:
     depends_on:
       mariadb:
         condition: service_healthy
+    cap_drop:
+      - ALL
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -64,6 +66,8 @@ services:
     cap_add:
       - NET_ADMIN
       - NET_RAW
+    cap_drop:
+      - ALL
     security_opt:
       - no-new-privileges:true
     environment:
