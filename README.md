@@ -368,8 +368,7 @@ bash scripts/mumble-setup.sh
 Conectar como SuperUser p/ administrar:
 - **Name**: `SuperUser`
 - **Password**: `MUMBLE_CONFIG_supw` (sops)
-- **IPv6 publico**: `mumble://[2804:1530:20b::189]:64738` (NPTv6 via OpenWrt)
-- **IPv6 local**: `mumble://[2804:1530:10b:d8b5::189]:64738` (LAN)
+- **IPv4**: `mumble://192.168.20.189:64738`
 - **Tailscale**: `mumble://100.73.57.112:64738` (qualquer lugar, zero firewall)
 
 ---
