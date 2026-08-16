@@ -56,9 +56,6 @@ jobs:
           - mariadb:lts
           - crowdsecurity/crowdsec:latest
           - ghcr.io/blakeblackshear/frigate:stable
-          - ghcr.io/immich-app/immich-server:v3.1.0
-          - ghcr.io/immich-app/immich-machine-learning:v3.1.0
-          - ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
           - valkey/valkey:9
           - docker.io/vaultwarden/server:1.37.1
           - decolua/9router:0.5.55

@@ -84,10 +84,6 @@ flowchart TB
             Kali["Kali"]
             Router["9Router<br/>ai router"]
             Headroom["Headroom<br/>cost tracking"]
-            Immich["Immich<br/>photos.home"]
-            ImmichML["immich-machine-learning"]
-            ImmichPG["immich-postgres"]
-            ImmichRedis["immich-redis"]
             Vault["Vaultwarden<br/>vault.home"]
         end
 
@@ -106,10 +102,6 @@ flowchart TB
     Traefik --> Grafana
     Traefik --> Forgejo
     Traefik --> Frigate
-    Traefik -->|"photos.home"| Immich
-    Immich -->|"pgvector"| ImmichPG
-    Immich --> ImmichRedis
-    Immich --> ImmichML
     Traefik -->|"vault.home"| Vault
     Vault -->|"vault"| MariaDB
     CrowdSec -->|"LAPI :8080"| Bouncer
@@ -169,8 +161,8 @@ O container `tailscale` atua como **subnet router**, expondo a LAN
 O [ScaleTail](https://github.com/tailscale-dev/ScaleTail) e um conjunto de configs
 Docker Compose com sidecar Tailscale — cada servico ganha URL propria
 `https://<app>.<tailnet>.ts.net` via **Tailscale Serve** (HTTPS automatico, sem portas
-abertas). No homelab, 4 servicos usam sidecars dedicados: Home Assistant,
-Forgejo, Immich e Vaultwarden. Cada um tem seu proprio `*-serve.json` e auth key
+abertas). No homelab, 3 servicos usam sidecars dedicados: Home Assistant,
+Forgejo e Vaultwarden. Cada um tem seu proprio `*-serve.json` e auth key
 reutilizavel com tags `tag:homelab` (ja no sops como `TAILSCALE_AUTHKEY`).
 
 O subnet router (`tailscale.yaml`) complementa os sidecars, expondo a LAN e a rede
@@ -239,8 +231,8 @@ docker compose -f compose/compose.yaml up -d
 apontando `192.168.20.189`). Devem bater com `traefik/dynamic.yml`.
 
 **DNS Tailscale**: cada servico com sidecar Tailscale tem node proprio no tailnet
-(`ha.<tailnet>.ts.net`, `git.<tailnet>.ts.net`, `photos.<tailnet>.ts.net`,
-`vault.<tailnet>.ts.net`, `authentik.<tailnet>.ts.net`). O subnet router
+(`ha.<tailnet>.ts.net`, `git.<tailnet>.ts.net`,
+`vault.<tailnet>.ts.net`). O subnet router
 (`homelab.<tailnet>.ts.net`) expoe a LAN e a rede Docker para servicos sem
 sidecar dedicado. Acesseis de qualquer dispositivo no tailnet sem VPN extra,
 sem porta aberta, sem DNS local.
@@ -251,7 +243,6 @@ sem porta aberta, sem DNS local.
 | `grafana.home` | Grafana | :white_check_mark: | — |
 | `git.home` | Forgejo | :white_check_mark: | `git.<tailnet>.ts.net` |
 | `frigate.home` | Frigate (NVR) | :white_check_mark: | — |
-| `photos.home` | Immich (fotos/videos) | :white_check_mark: | `photos.<tailnet>.ts.net` |
 | `vault.home` | Vaultwarden (senhas) | :white_check_mark: | `vault.<tailnet>.ts.net` |
 | `9router.home` | 9Router (AI Router) | :white_check_mark: | `9router.<tailnet>.ts.net` |
 | `mumble://100.73.57.112:64738` | Mumble (VoIP) | Tailscale IP | direto (protocolo proprio) |
@@ -280,17 +271,12 @@ sem porta aberta, sem DNS local.
 | monitoring | prometheus | `v3.4.0` | `127.0.0.1:9090` | backend |
 | monitoring | grafana | `11.6.0` | `127.0.0.1:3000` | backend |
 | media | frigate | `stable` | `:8554,8555` | backend |
-| immich | immich-server | `v3.1.0` | `photos.home` | backend |
-| immich | immich-machine-learning | `v3.1.0` | interno | backend |
-| immich | immich-postgres | `14-vectorchord` | interno | backend |
-| immich | immich-redis | `valkey:9` | interno | backend |
 | vaultwarden | vaultwarden | `1.37.1` | `vault.home` | backend |
 | network | tailscale | `latest` | subnet router | host |
 | 9router | 9router | `0.5.55` | `9router.home` | backend |
 | 9router | headroom | `latest` | interno | backend |
 | home | ts-homeassistant | `latest` | `https://ha1.<tailnet>.ts.net` | backend |
 | services | ts-forgejo | `latest` | `https://git.<tailnet>.ts.net` | backend |
-| immich | ts-immich | `latest` | `https://photos.<tailnet>.ts.net` | backend |
 | vaultwarden | ts-vaultwarden | `latest` | `https://vault.<tailnet>.ts.net` | backend |
 
 ---
@@ -378,14 +364,12 @@ compose/
 ├── security.yaml          suricata · crowdsec · suricata-stats
 ├── monitoring.yaml        prometheus · grafana
 ├── media.yaml             frigate (NVR)
-├── immich.yaml            immich (fotos) + postgres/valkey proprios
 ├── vaultwarden.yaml       vaultwarden (senhas, MariaDB central)
 ├── services.yaml          traefik · forgejo · mumble · kali
 ├── 9router.yaml           9router (AI Router) + headroom
 ├── tailscale-serve.json   serve config do subnet router (Funnel)
 ├── ha-serve.json          serve config do sidecar homeassistant
 ├── forgejo-serve.json     serve config do sidecar forgejo
-├── immich-serve.json      serve config do sidecar immich
 ├── vaultwarden-serve.json serve config do sidecar vaultwarden
 ├── .env.example           template
 ├── sops-secrets.yaml      encriptado (SOPS + age)
@@ -495,7 +479,7 @@ Conectar como SuperUser p/ administrar:
 - Secrets: SOPS + age (`.env` gitignored, `.sops.yaml` com chave publica commitavel)
 - Tailscale: auth key ephemeral, subnet routes aprovadas manualmente
 - 9Router: `INITIAL_PASSWORD` via Docker secret, `cap_drop: [ALL]`, `read_only: true`, `no-new-privileges:true`
-- Immich/Vaultwarden: senhas (DB, redis, admin token) via Docker secrets
+- Vaultwarden: senhas (DB, redis, admin token) via Docker secrets
   (`_FILE`/`/run/secrets`), nunca env vars
 
 ### Portas expostas
