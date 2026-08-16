@@ -17,6 +17,7 @@ jobs:
       - uses: ibiqlik/action-yamllint@v3
         with:
           file_or_dir: compose/ homeassistant/ suricata/ monitoring/ crowdsec/ traefik/ frigate/
+          config_file: .yamllint.yaml
 
   compose-validate:
     runs-on: ubuntu-latest
