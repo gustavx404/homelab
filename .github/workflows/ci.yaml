@@ -13,7 +13,7 @@ jobs:
   yamllint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
       - uses: ibiqlik/action-yamllint@v3
         with:
           file_or_dir: compose/ homeassistant/ suricata/ monitoring/ crowdsec/ traefik/ frigate/
@@ -21,7 +21,7 @@ jobs:
   compose-validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
       - name: Create .env from template (CI-only)
         run: cp compose/.env.example compose/.env
       - name: Validate all stacks
@@ -30,7 +30,7 @@ jobs:
   config-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
       - name: Scan compose for misconfigurations
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -63,7 +63,7 @@ jobs:
           - decolua/9router:0.5.55
           - ghcr.io/chopratejas/headroom:latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
       - name: Pull image (retry on GHCR rate limit)
         run: |
           for i in $(seq 1 5); do
