@@ -1,5 +1,5 @@
 # Traefik dynamic configuration — hostname-based routing
-# DNS local: 192.168.20.189 ha.home grafana.home git.home frigate.home photos.home vault.home
+# DNS local: 192.168.20.189 ha.home grafana.home git.home frigate.home vault.home
 # DNS Tailscale: ha.<tailnet>.ts.net grafana.<tailnet>.ts.net etc. (serve config)
 
 http:
@@ -68,15 +68,6 @@ http:
       service: frigate
       tls: {}
 
-    immich:
-      rule: "Host(`photos.home`) || HostRegexp(`^photos\\..+\\.ts\\.net$`)"
-      entryPoints:
-        - websecure
-      middlewares:
-        - sec-headers
-      service: immich
-      tls: {}
-
     vaultwarden:
       rule: "Host(`vault.home`) || HostRegexp(`^vault\\..+\\.ts\\.net$`)"
       entryPoints:
@@ -135,12 +126,6 @@ http:
         - frigate-auth
       service: frigate
 
-    immich-ts:
-      rule: "HostRegexp(`^photos\\..+\\.ts\\.net$`)"
-      entryPoints:
-        - tailscale
-      service: immich
-
     vaultwarden-ts:
       rule: "HostRegexp(`^vault\\..+\\.ts\\.net$`)"
       entryPoints:
@@ -168,12 +153,6 @@ http:
       loadBalancer:
         servers:
           - url: "http://frigate:8971"
-
-    immich:
-      loadBalancer:
-        servers:
-          - url: "http://immich-server:2283"
-        passHostHeader: true
 
     9router:
       loadBalancer:
