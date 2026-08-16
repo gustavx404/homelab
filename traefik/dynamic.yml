@@ -166,6 +166,12 @@ http:
           - url: "http://vaultwarden:80"
         passHostHeader: true
 
+    omniroute:
+      loadBalancer:
+        servers:
+          - url: "http://omniroute:20128"
+        passHostHeader: true
+
 tls:
   certificates:
     - certFile: /certs/ha1.crt
