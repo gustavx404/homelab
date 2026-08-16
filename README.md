@@ -2,14 +2,14 @@
   <h1 align="center">homelab</h1>
   <p align="center">
     <b>Infraestrutura auto-hospedada</b><br>
-    Docker Compose &middot; 26 servicos &middot; Zero-confianca
+    Docker Compose &middot; 20 servicos &middot; Zero-confianca
   </p>
 </p>
 
 <p align="center">
   <a href="https://github.com/gustavx404/homelab/actions"><img src="https://github.com/gustavx404/homelab/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/servicos-26-3b82f6?style=flat-square" alt="26 servicos">
-  <img src="https://img.shields.io/badge/suricata-12_asssinaturas-6b7280?style=flat-square" alt="Suricata 12 assinaturas">
+  <img src="https://img.shields.io/badge/servicos-20-3b82f6?style=flat-square" alt="20 servicos">
+  <img src="https://img.shields.io/badge/suricata-12_assinaturas-6b7280?style=flat-square" alt="Suricata 12 assinaturas">
   <img src="https://img.shields.io/badge/secrets-sops%2Bage-6b7280?style=flat-square" alt="SOPS + age">
 </p>
 
