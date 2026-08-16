@@ -1,0 +1,28 @@
+extends: default
+rules:
+  line-length:
+    max: 160
+    level: error
+  empty-lines:
+    max: 2
+    level: error
+  trailing-spaces:
+    level: error
+  indentation:
+    spaces: 2
+    level: error
+  comments-indentation:
+    level: warning
+  new-line-at-end-of-file:
+    level: error
+ignore: |
+  homeassistant/esphome/.esphome/**/*
+  homeassistant/esphome/.esphome/**/.*/*
+  .github/workflows/*.yaml
+  compose/sops-secrets.yaml
+  compose/.env
+  data/**/*
+  **/.git/**/*
+  **/__pycache__/**/*
+  **/node_modules/**/*
+  **/*.log
