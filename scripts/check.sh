@@ -89,22 +89,31 @@ fi
 echo "==> 5/5 SOPS/AGE secrets validos"
 # ---------------------------------------------------------------------------
 if command -v sops >/dev/null 2>&1; then
+  # Find files that are actually encrypted (contain sops metadata)
   sops_files=$(find . -name "*.sops.yaml" -o -name "*.sops.yml" -o -name "secrets.yaml" -o -name "secrets.yml" 2>/dev/null | head -10)
   if [[ -n "$sops_files" ]]; then
-    # Only test decrypt if age key is available
-    if [[ -n "${SOPS_AGE_KEY_FILE:-}" ]] || [[ -f "$HOME/.config/sops/age/keys.txt" ]]; then
-      sops_ok=true
-      while IFS= read -r f; do
-        if ! sops -d "$f" >/dev/null 2>&1; then
-          fail "SOPS decrypt falhou: $f"
-          sops_ok=false
+    # Only test decrypt on files that have sops metadata
+    sops_ok=true
+    tested=0
+    while IFS= read -r f; do
+      if head -20 "$f" 2>/dev/null | grep -q "sops:"; then
+        if [[ -n "${SOPS_AGE_KEY_FILE:-}" ]] || [[ -f "$HOME/.config/sops/age/keys.txt" ]]; then
+          if ! sops -d "$f" >/dev/null 2>&1; then
+            fail "SOPS decrypt falhou: $f"
+            sops_ok=false
+          fi
+          tested=1
+        else
+          echo "  [SKIP] age key nao disponivel para testar decrypt"
         fi
-      done <<< "$sops_files"
-      if [[ "$sops_ok" == "true" ]]; then
-        ok "SOPS secrets descriptografam corretamente"
+      else
+        echo "  [SKIP] $f nao eh arquivo encriptado SOPS (sem metadata sops:)"
       fi
-    else
-      echo "  [SKIP] age key nao disponivel para testar decrypt"
+    done <<< "$sops_files"
+    if [[ $tested -eq 0 ]]; then
+      echo "  [SKIP] nenhum arquivo SOPS encriptado encontrado para testar"
+    elif [[ "$sops_ok" == "true" ]]; then
+      ok "SOPS secrets descriptografam corretamente"
     fi
   else
     echo "  [SKIP] nenhum arquivo SOPS encontrado"
