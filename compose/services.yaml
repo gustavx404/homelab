@@ -21,6 +21,7 @@ services:
       - ../traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ../traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
       - ../data/traefik:/letsencrypt
+      - ../traefik/certs:/certs:ro
     deploy:
       resources:
         limits:
@@ -42,8 +43,6 @@ services:
     volumes:
       - ../data/forgejo:/data
       - /etc/localtime:/etc/localtime:ro
-    extra_hosts:
-      - "authentik.home:host-gateway"
     environment:
       - FORGEJO__database__DB_TYPE=mysql
       - FORGEJO__database__HOST=mariadb:3306
@@ -52,13 +51,6 @@ services:
       - FORGEJO__database__PASSWD=${FORGEJO_DB_PASSWORD:?FORGEJO_DB_PASSWORD required}
       - FORGEJO__server__ROOT_URL=https://git.home/
       - FORGEJO__metrics__ENABLED=true
-      # SSO via Authentik (OIDC). Provider criado por scripts/authentik-oidc-setup.py
-      - FORGEJO__oauth2__ENABLED=true
-      - FORGEJO__oauth2__NAME=Authentik
-      - FORGEJO__oauth2__PROVIDER=openidConnect
-      - FORGEJO__oauth2__KEY=${FORGEJO_OIDC_CLIENT_ID:?FORGEJO_OIDC_CLIENT_ID required}
-      - FORGEJO__oauth2__SECRET=${FORGEJO_OIDC_CLIENT_SECRET:?FORGEJO_OIDC_CLIENT_SECRET required}
-      - FORGEJO__oauth2__AUTO_DISCOVERY_URL=https://authentik.home/application/o/forgejo/.well-known/openid-configuration
     deploy:
       resources:
         limits:
@@ -88,6 +80,9 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     environment:
       - TS_AUTHKEY=${TAILSCALE_AUTHKEY:?TAILSCALE_AUTHKEY required}
       - TS_HOSTNAME=git

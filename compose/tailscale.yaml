@@ -20,8 +20,13 @@ services:
     cap_add:
       - NET_ADMIN
       - NET_RAW
+    cap_drop:
+      - ALL
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     volumes:
       - ../data/tailscale:/var/lib/tailscale
       - ./tailscale-serve.json:/config/serve.json:ro

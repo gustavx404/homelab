@@ -27,6 +27,8 @@ entryPoints:
   # bind precisa ser no eth0 e nao no loopback do container.
   tailscale:
     address: ":8181"
+  tailscale-tls:
+    address: ":8443"
 
 providers:
   file:

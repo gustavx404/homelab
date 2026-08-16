@@ -11,7 +11,7 @@ include:
   - monitoring.yaml
   - media.yaml
   - services.yaml
-  - authentik.yaml
   - immich.yaml
   - vaultwarden.yaml
   - tailscale.yaml
+  - 9router.yaml

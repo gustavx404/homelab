@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://github.com/gustavx404/homelab/actions"><img src="https://github.com/gustavx404/homelab/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/servicos-28-3b82f6?style=flat-square" alt="28 servicos">
+  <img src="https://img.shields.io/badge/servicos-27-3b82f6?style=flat-square" alt="27 servicos">
   <img src="https://img.shields.io/badge/suricata-12_asssinaturas-6b7280?style=flat-square" alt="Suricata 12 assinaturas">
   <img src="https://img.shields.io/badge/secrets-sops%2Bage-6b7280?style=flat-square" alt="SOPS + age">
 </p>
@@ -22,7 +22,7 @@
   <img src="https://img.shields.io/badge/Prometheus-E6522C?style=flat-square&logo=prometheus&logoColor=white" alt="Prometheus">
   <img src="https://img.shields.io/badge/Grafana-F46800?style=flat-square&logo=grafana&logoColor=white" alt="Grafana">
   <img src="https://img.shields.io/badge/MariaDB-003545?style=flat-square&logo=mariadb&logoColor=white" alt="MariaDB">
-  <img src="https://img.shields.io/badge/Authentik-FD4B2D?style=flat-square&logo=authentik&logoColor=white" alt="Authentik">
+  <img src="https://img.shields.io/badge/9Router-6B46C1?style=flat-square&logo=ai&logoColor=white" alt="9Router">
   <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis&logoColor=white" alt="Redis">
 </p>
@@ -36,7 +36,7 @@
 - [Apple](#apple) — HomeKit, Siri, Companion App
 - [Instalacao](#instalacao) — do zero ao ar em 5 minutos
 - [Servicos](#servicos) — catalogo completo com 28 containers
-- [Autenticacao (Authentik)](#autenticacao-authentik) — IdP/SSO + sidecar ScaleTail
+- [9Router (AI Router)](#9router-ai-router) — LLM router & token saver
 - [Banco de dados](#banco-de-dados-mariadb) — MariaDB central
 - [Estrutura](#estrutura) — arvore de diretorios
 - [Seguranca](#seguranca) — IDS/IPS, CrowdSec, hardenings
@@ -82,11 +82,8 @@ flowchart TB
             Stats["suricata-stats"]
             Mumble["Mumble VoIP"]
             Kali["Kali"]
-            Authentik["Authentik"]
-            PG["Postgres"]
-            Redis["Redis"]
-            Worker["Authentik worker"]
-            TsAuth["ts-authentik<br/>sidecar"]
+            Router["9Router<br/>ai router"]
+            Headroom["Headroom<br/>cost tracking"]
             Immich["Immich<br/>photos.home"]
             ImmichML["immich-machine-learning"]
             ImmichPG["immich-postgres"]
@@ -104,11 +101,8 @@ flowchart TB
     Tailscale -->|"subnet routes<br/>192.168.20.0/24 + 172.19.0.0/16"| Backend
     Internet -->|":80 :443"| Traefik
     Traefik -->|"hostname routing"| HA
-    Traefik -->|"authentik.home"| Authentik
-    Authentik -->|"auth"| PG
-    Authentik --> Redis
-    Worker -->|"bootstrap"| PG
-    TsAuth -->|"tailnet HTTPS"| Authentik
+    Traefik -->|"9router.home"| Router
+    Router --> Headroom
     Traefik --> Grafana
     Traefik --> Forgejo
     Traefik --> Frigate
@@ -137,8 +131,8 @@ flowchart TB
 | MariaDB | Banco central — HA (recorder), Forgejo, Grafana, CrowdSec, Mumble, Vaultwarden |
 | Suricata + CrowdSec | IDS/IPS — detecta scans, aplica bans, notifica via HA webhook |
 | Prometheus + Grafana | Metricas e dashboards de todos os servicos |
-| Authentik | IdP/SSO — autentica os servicos via OIDC (admin akadmin) — Grafana, Forgejo, Immich, Vaultwarden |
-| ts-authentik | Sidecar ScaleTail — URL propria https://authentik.<tailnet>.ts.net (Tailscale Serve) |
+| 9Router | AI Router & Token Saver — roteia LLM requests (OpenAI/Anthropic/Gemini/locals), dashboard em https://9router.home |
+| Headroom | Cost tracking sidecar para 9Router — metricas de gasto por modelo |
 
 ---
 
@@ -175,7 +169,7 @@ O container `tailscale` atua como **subnet router**, expondo a LAN
 O [ScaleTail](https://github.com/tailscale-dev/ScaleTail) e um conjunto de configs
 Docker Compose com sidecar Tailscale — cada servico ganha URL propria
 `https://<app>.<tailnet>.ts.net` via **Tailscale Serve** (HTTPS automatico, sem portas
-abertas). No homelab, 5 servicos usam sidecars dedicados: Authentik, Home Assistant,
+abertas). No homelab, 4 servicos usam sidecars dedicados: Home Assistant,
 Forgejo, Immich e Vaultwarden. Cada um tem seu proprio `*-serve.json` e auth key
 reutilizavel com tags `tag:homelab` (ja no sops como `TAILSCALE_AUTHKEY`).
 
@@ -253,13 +247,13 @@ sem porta aberta, sem DNS local.
 
 | hostname | servico | local | Tailscale |
 |---|---|---|---|
-| `ha.home` | Home Assistant | :white_check_mark: | `ha.<tailnet>.ts.net` |
+| `ha.home` | Home Assistant | :white_check_mark: | `ha1.<tailnet>.ts.net` |
 | `grafana.home` | Grafana | :white_check_mark: | — |
 | `git.home` | Forgejo | :white_check_mark: | `git.<tailnet>.ts.net` |
 | `frigate.home` | Frigate (NVR) | :white_check_mark: | — |
-| `authentik.home` | Authentik (IdP/SSO) | :white_check_mark: | `authentik.<tailnet>.ts.net` |
 | `photos.home` | Immich (fotos/videos) | :white_check_mark: | `photos.<tailnet>.ts.net` |
 | `vault.home` | Vaultwarden (senhas) | :white_check_mark: | `vault.<tailnet>.ts.net` |
+| `9router.home` | 9Router (AI Router) | :white_check_mark: | `9router.<tailnet>.ts.net` |
 | `mumble://100.73.57.112:64738` | Mumble (VoIP) | Tailscale IP | direto (protocolo proprio) |
 
 > Para acesso **publico** (internet, sem Tailscale): habilite Funnel no
@@ -292,12 +286,9 @@ sem porta aberta, sem DNS local.
 | immich | immich-redis | `valkey:9` | interno | backend |
 | vaultwarden | vaultwarden | `1.37.1` | `vault.home` | backend |
 | network | tailscale | `latest` | subnet router | host |
-| auth | postgres | `16-alpine` | interno | backend |
-| auth | redis | `7-alpine` | interno | backend |
-| auth | server | `2026.5.6` | `9100` interno | backend |
-| auth | worker | `2026.5.6` | — | backend |
-| auth | ts-authentik | `latest` | `https://authentik.<tailnet>.ts.net` | backend |
-| home | ts-homeassistant | `latest` | `https://ha.<tailnet>.ts.net` | backend |
+| 9router | 9router | `0.5.55` | `9router.home` | backend |
+| 9router | headroom | `latest` | interno | backend |
+| home | ts-homeassistant | `latest` | `https://ha1.<tailnet>.ts.net` | backend |
 | services | ts-forgejo | `latest` | `https://git.<tailnet>.ts.net` | backend |
 | immich | ts-immich | `latest` | `https://photos.<tailnet>.ts.net` | backend |
 | vaultwarden | ts-vaultwarden | `latest` | `https://vault.<tailnet>.ts.net` | backend |
@@ -330,166 +321,48 @@ Provisionamento em duas camadas no primeiro boot (datadir vazio):
 
 ---
 
----
+## 9Router (AI Router)
 
-## Autenticacao (Authentik)
+[9Router](https://github.com/decolua/9router) e um **roteador LLM gratuito** — recebe requests
+OpenAI/Anthropic/Gemini/Ollama, escolhe o melhor modelo (custo/qualidade/latencia) e
+responde via API compativel. Dashboard web em `https://9router.home` (via Traefik).
 
-[Authentik](https://goauthentik.io/) e o Identity Provider (IdP/SSO) do homelab —
-autenticacao central (OIDC) para os servicos. Admin inicial: `akadmin` (senha =
-`AUTHENTIK_BOOTSTRAP_PASSWORD` no sops), bootstrap feito pelo worker no primeiro boot.
-
-Stack `compose/authentik.yaml` (rede `backend`, sem portas expostas no host):
+Stack `compose/9router.yaml` (rede `backend`, sem portas expostas no host):
 
 | servico | imagem | funcao |
 |---|---|---|
-| postgres | `16-alpine` | banco dedicado (Authentik NAO suporta MariaDB) |
-| redis | `7-alpine` | cache/filas |
-| server | `2026.5.6` | API + UI (`:9000` interno) |
-| worker | `2026.5.6` | tarefas em background (bootstrap do admin) |
-| ts-authentik | `latest` | sidecar ScaleTail (URL propria no tailnet) |
+| 9router | `decolua/9router:0.5.55` | API router + UI (`:20128` interno) |
+| headroom | `ghcr.io/chopratejas/headroom:latest` | Cost tracking sidecar (`:8787` interno) |
 
 **Setup (1x)**:
 
 ```bash
-sops compose/sops-secrets.yaml   # AUTHENTIK_SECRET_KEY, AUTHENTIK_POSTGRES_PASSWORD,
-                                 # AUTHENTIK_BOOTSTRAP_PASSWORD, AUTHENTIK_BOOTSTRAP_EMAIL
+# Gere senha forte p/ admin inicial
+openssl rand -base64 32
+
+# Adicione ao sops (valor encriptado)
+sops compose/sops-secrets.yaml   # 9ROUTER_INITIAL_PASSWORD: <senha_gerada>
 bash scripts/decrypt-secrets.sh
-docker compose -f compose/compose.yaml up -d authentik
+docker compose -f compose/compose.yaml up -d 9router
 ```
 
 **Acesso**:
-- LAN/tailnet: `https://authentik.home` (via Traefik)
-- URL propria no tailnet: `https://authentik.<tailnet>.ts.net` (sidecar ScaleTail,
-  Tailscale Serve com HTTPS automatico — requer MagicDNS habilitado)
+- LAN/tailnet: `https://9router.home` (via Traefik)
+- Dashboard: `https://9router.home` — login com `admin` / senha do `9ROUTER_INITIAL_PASSWORD`
+- API OpenAI-compat: `https://9router.home/v1` — use como baseURL no cliente (ex.: `openai.baseURL`)
 
-Para usar como SSO: crie um provider OIDC no UI (Admin > Applications > Providers) e
-aponte o app (ex.: Grafana via `auth.oidc`).
+**Providers suportados** (configurados no dashboard UI):
+- OpenAI (GPT-4o, GPT-4o-mini, o1, etc)
+- Anthropic (Claude 3.5 Sonnet, Haiku, Opus)
+- Google (Gemini 1.5 Pro/Flash)
+- Ollama (modelos locais via `http://host.docker.internal:11434`)
+- OpenRouter, Groq, Together, DeepSeek, etc
 
-### SSO — Grafana com Authentik
+**Routing rules** (UI > Routes): defina prioridade por custo, latencia, qualidade, ou modelo especifico.
+Headroom (`http://headroom:8787`) coleta metricas de custo/tokens por request — visiveis no dashboard.
 
-Ja configurado no `compose/monitoring.yaml`. Falta criar o provider no Authentik:
-
-1. Authentik UI > Admin > Applications > Providers > Create > OAuth2/OpenID
-   - **Name**: Grafana
-   - **Client type**: Confidential
-   - **Redirect URI**: `https://grafana.home/login/generic_oauth`
-   - **Scopes**: openid profile email
-
-2. Em Applications > Create > Link ao provider Grafana
-
-3. Copie **Client ID** e **Client Secret** p/ o sops:
-   ```bash
-   sops compose/sops-secrets.yaml
-   # GRAFANA_OIDC_CLIENT_ID: <client_id>
-   # GRAFANA_OIDC_CLIENT_SECRET: <client_secret>
-   bash scripts/decrypt-secrets.sh
-   docker compose -f compose/compose.yaml up -d grafana
-   ```
-
-### SSO — Forgejo com Authentik
-
-1. Authentik UI > Admin > Applications > Providers > OAuth2/OpenID
-   - **Name**: Forgejo
-   - **Client type**: Confidential
-   - **Redirect URI**: `https://git.home/user/oauth2/authentik/callback`
-   - **Scopes**: openid profile email
-
-2. Em Forgejo (Settings > Authentication Sources > Add):
-   - **Type**: OAuth2 | **Name**: Authentik
-   - **OAuth2 Provider**: OpenID Connect
-   - **Client ID/Secret**: do sops (`FORGEJO_OIDC_CLIENT_ID/SECRET`)
-   - **OpenID Connect Auto Discovery URL**: `https://authentik.home/application/o/forgejo/.well-known/openid-configuration`
-
-### SSO — Immich com Authentik
-
-O Immich aceita OIDC nativo (`IMMICH_OIDC_*` no `compose/immich.yaml`). Setup:
-
-```bash
-bash scripts/authentik-oidc-setup.sh   # cria provider + app no Authentik (idempotente)
-# copie os Client ID/Secret impressos para o sops:
-sops compose/sops-secrets.yaml         # IMMICH_OIDC_CLIENT_ID / IMMICH_OIDC_CLIENT_SECRET
-bash scripts/decrypt-secrets.sh
-docker compose -f compose/compose.yaml up -d immich-server
-```
-
-Provider criado automaticamente com:
-- **Redirect URIs**: `https://photos.home/auth/login`, `https://photos.home/user-settings`,
-  `app.immich:///oauth-callback` (mobile)
-- **Scopes**: openid profile email | **Signing**: RS256 (chave padrao do Authentik)
-- **Access token**: 10min (evita colisao com a janela de 5min do cliente)
-
-O `IMMICH_OIDC_ISSUER_URL` ja aponta para
-`https://authentik.home/application/o/immich/` e o container resolve `authentik.home`
-via `extra_hosts` (Traefik), sem depender do DNS `.home` da LAN. Para alterar
-(Authentik > System > OAuth), edite o compose e recrie o container.
-
-### SSO — Vaultwarden com Authentik
-
-Vaultwarden suporta OIDC via `SSO_*` (callback auto-gerado a partir do `DOMAIN`).
-
-```bash
-bash scripts/authentik-oidc-setup.sh   # cria provider + app no Authentik (idempotente)
-# copie os Client ID/Secret impressos para o sops:
-sops compose/sops-secrets.yaml         # VAULTWARDEN_OIDC_CLIENT_ID / VAULTWARDEN_OIDC_CLIENT_SECRET
-bash scripts/decrypt-secrets.sh
-docker compose -f compose/compose.yaml up -d vaultwarden
-```
-
-Provider criado automaticamente com:
-- **Redirect URI**: `https://vault.home/identity/connect/oidc-signin`
-- **Scopes**: openid profile email offline_access (necessario para refresh token)
-- **Access token**: 10min (o default de 5min do Authentik colide com a deteccao
-  de expiracao de 5min do cliente Bitwarden — se re-criar o provider pela UI,
-  ajuste em Advanced protocol settings)
-
-No `compose/vaultwarden.yaml`: `SSO_AUTHORITY` aponta para
-`https://authentik.home/application/o/vaultwarden/` (trailing `/` importante),
-`SSO_CLIENT_SECRET` via Docker secret, e `extra_hosts` resolve `authentik.home`
-via Traefik. A master password continua sendo exigida pelo cofre (por design).
-
-> **Certificado TLS do `.home`**: o Traefik serve o certificado padrao
-> auto-assinado para dominios `.home` (nao e possivel Let's Encrypt p/ TLD
-> inexistente). O discovery OIDC entre containers e o fluxo no browser funcionam,
-> mas clientes validam o certificado do issuer — para remover o aviso de
-> certificado, configure um CA interno (ex.: `mkcert`) servido pelo Traefik
-> (`tls.certificates` em `traefik/dynamic.yml`) e monte a CA nos containers
-> (`SSL_CERT_FILE`/`NODE_EXTRA_CA_CERTS`). Isso afeta igualmente o SSO ja
-> documentado do Grafana e do Forgejo.
-
-
-**Troubleshooting — redirect loop para /setup (HTTP 500)**:
-
-Sintoma: qualquer acesso a `homelab.buru-eagle.ts.net` redireciona para `/setup`
-e retorna `500 Internal Server Error` (`FlowNonApplicableException`).
-
-Causa: no upgrade para 2026.5.6 as flags passaram a ser tenant-based; o tenant
-`Default` (schema `public`) ficou com `flags = {}` — a flag `setup` se perdeu.
-Com `Setup.get() = False`, toda request a `/` cai em `/setup`, e o flow
-`initial-setup` esta travado (pos-setup), gerando o 500. O bootstrap
-(`system/bootstrap.yaml` + `AUTHENTIK_BOOTSTRAP_PASSWORD`) que deveria re-setar
-a flag falha com `KeyOf: admin-group` quando os objetos ja existem.
-
-Recovery (setar a flag de setup no tenant public):
-
-```bash
-docker exec authentik-server ak shell -c "from authentik.core.apps import Setup; Setup.set(True)"
-```
-
-Apos isso, o bootstrap passa a skipar (sem o erro KeyOf) e o login volta a
-responder 200. Se `akadmin` perdeu superuser no mesmo upgrade (grupo
-`authentik Admins` com `is_superuser=false`), restaurar com:
-
-```bash
-docker exec authentik-server ak shell -c "
-from authentik.core.models import User, Group
-g = Group.objects.get(name='authentik Admins'); g.is_superuser = True; g.save()
-u = User.objects.get(username='akadmin'); u.groups.add(g)
-"
-```
-
-> O erro `EntryInvalidError: KeyOf admin-group` (level critical) no boot do worker
-> e benigno uma vez que a flag `setup` esta setada — o signal de bootstrap
-> simplesmente skipa.
+> **Seguranca**: `INITIAL_PASSWORD` via Docker secret (`/run/secrets/9ROUTER_INITIAL_PASSWORD`), nunca env var.
+> Containers com `cap_drop: [ALL]`, `read_only: true`, `no-new-privileges:true`.
 
 ---
 ## Estrutura
@@ -508,9 +381,8 @@ compose/
 ├── immich.yaml            immich (fotos) + postgres/valkey proprios
 ├── vaultwarden.yaml       vaultwarden (senhas, MariaDB central)
 ├── services.yaml          traefik · forgejo · mumble · kali
-├── authentik.yaml         authentik (IdP/SSO) + sidecar ScaleTail
+├── 9router.yaml           9router (AI Router) + headroom
 ├── tailscale-serve.json   serve config do subnet router (Funnel)
-├── authentik-serve.json   serve config do sidecar authentik
 ├── ha-serve.json          serve config do sidecar homeassistant
 ├── forgejo-serve.json     serve config do sidecar forgejo
 ├── immich-serve.json      serve config do sidecar immich
@@ -527,7 +399,7 @@ homeassistant/  HA + ESPHome
 monitoring/  prometheus + grafana dashboards
 data/        volumes persistentes (mount de todos os containers; alvo do backup)
 .github/     CI (yamllint · compose validate · trivy config e imagem)
-scripts/     init-sops · decrypt-secrets · authentik-oidc-setup (sh + py) · update-suricata-rules · suricata-stats · mumble-setup
+scripts/     init-sops · decrypt-secrets · update-suricata-rules · suricata-stats · mumble-setup
 ```
 
 Stacks podem subir individualmente com `compose/network.yaml` (obrigatorio) +
@@ -622,10 +494,9 @@ Conectar como SuperUser p/ administrar:
 - `no-new-privileges:true`, healthchecks e resource limits em todos os containers
 - Secrets: SOPS + age (`.env` gitignored, `.sops.yaml` com chave publica commitavel)
 - Tailscale: auth key ephemeral, subnet routes aprovadas manualmente
-- Authentik: secrets via sops (AUTHENTIK_*), PostgreSQL dedicado sem porta no host,
-  redis isolado na rede backend, analytics e error-reporting desabilitados
-- Immich/Vaultwarden: senhas (DB, redis, admin token, OIDC client secret) via Docker secrets
-  (`_FILE`/`/run/secrets`), nunca env vars; `extra_hosts` limita o SSO ao Traefik
+- 9Router: `INITIAL_PASSWORD` via Docker secret, `cap_drop: [ALL]`, `read_only: true`, `no-new-privileges:true`
+- Immich/Vaultwarden: senhas (DB, redis, admin token) via Docker secrets
+  (`_FILE`/`/run/secrets`), nunca env vars
 
 ### Portas expostas
 
@@ -680,7 +551,7 @@ docker compose -f compose/compose.yaml up -d
 | [EASUN SMG II ESPHome](https://github.com/robgt978/Easun-SMG-II-11Kw-esphome-) | robgt978 |
 | [Tailscale](https://tailscale.com/) | Tailscale Inc. |
 | [ScaleTail](https://github.com/tailscale-dev/ScaleTail) | Tailscale |
-| [Authentik](https://goauthentik.io/) | goauthentik |
+| [9Router](https://github.com/decolua/9router) | decolua |
 | [Suricata](https://suricata.io/) | OISF |
 | [CrowdSec](https://github.com/crowdsecurity/crowdsec) | CrowdSec |
 | [Mumble](https://github.com/mumble-voip/mumble) | Mumble VoIP |

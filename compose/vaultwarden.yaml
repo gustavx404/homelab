@@ -14,8 +14,6 @@ services:
       - ../data/vaultwarden:/data
       - /etc/localtime:/etc/localtime:ro
     # SSO discovery via Traefik sem depender do DNS .home na LAN (host-gateway = IP do host)
-    extra_hosts:
-      - "authentik.home:host-gateway"
     environment:
       - TZ=${TZ}
       - DOMAIN=https://vault.home
@@ -25,14 +23,10 @@ services:
       # SSO via Authentik (OIDC). Provider criado por scripts/authentik-oidc-setup.sh
       # Callback: https://vault.home/identity/connect/oidc-signin (auto a partir do DOMAIN)
       - SSO_ENABLED=true
-      - SSO_AUTHORITY=https://authentik.home/application/o/vaultwarden/
       - SSO_SCOPES=openid profile email offline_access
-      - SSO_CLIENT_ID=${VAULTWARDEN_OIDC_CLIENT_ID:?VAULTWARDEN_OIDC_CLIENT_ID required}
-      - SSO_CLIENT_SECRET_FILE=/run/secrets/VAULTWARDEN_OIDC_CLIENT_SECRET
     secrets:
       - VAULTWARDEN_ADMIN_TOKEN
       - VAULTWARDEN_DATABASE_URL
-      - VAULTWARDEN_OIDC_CLIENT_SECRET
     depends_on:
       mariadb:
         condition: service_healthy
@@ -70,6 +64,9 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     environment:
       - TS_AUTHKEY=${TAILSCALE_AUTHKEY:?TAILSCALE_AUTHKEY required}
       - TS_HOSTNAME=vault

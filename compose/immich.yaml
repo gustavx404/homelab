@@ -14,8 +14,6 @@ services:
       - ../data/immich/library:/data
       - /etc/localtime:/etc/localtime:ro
     # SSO discovery via Traefik sem depender do DNS .home na LAN (host-gateway = IP do host)
-    extra_hosts:
-      - "authentik.home:host-gateway"
     environment:
       - TZ=${TZ}
       - DB_HOSTNAME=database
@@ -27,13 +25,7 @@ services:
       - REDIS_PORT=6379
       - REDIS_PASSWORD_FILE=/run/secrets/IMMICH_REDIS_PASSWORD
       - REDIS_DBINDEX=0
-      # SSO via Authentik (OIDC). Provider criado por scripts/authentik-oidc-setup.sh
-      - IMMICH_OIDC_ISSUER_URL=https://authentik.home/application/o/immich/
-      - IMMICH_OIDC_CLIENT_ID=${IMMICH_OIDC_CLIENT_ID:?IMMICH_OIDC_CLIENT_ID required}
-      # SSO via Authentik (OIDC). NOTA: Immich v3.1 nao suporta _FILE p/ OIDC secret —
       # este e o unico secret que vai como env var. Mitigado por docker.sock :ro e rede isolada.
-      - IMMICH_OIDC_CLIENT_SECRET=${IMMICH_OIDC_CLIENT_SECRET:?IMMICH_OIDC_CLIENT_SECRET required}
-      - IMMICH_OIDC_AUTO_REGISTER=false
     secrets:
       - IMMICH_DB_PASSWORD
       - IMMICH_REDIS_PASSWORD
@@ -168,8 +160,13 @@ services:
     cap_add:
       - NET_ADMIN
       - NET_RAW
+    cap_drop:
+      - ALL
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     environment:
       - TS_AUTHKEY=${TAILSCALE_AUTHKEY:?TAILSCALE_AUTHKEY required}
       - TS_HOSTNAME=photos

@@ -1,5 +1,5 @@
 # Traefik dynamic configuration — hostname-based routing
-# DNS local: 192.168.20.189 ha.home grafana.home git.home frigate.home authentik.home photos.home vault.home
+# DNS local: 192.168.20.189 ha.home grafana.home git.home frigate.home photos.home vault.home
 # DNS Tailscale: ha.<tailnet>.ts.net grafana.<tailnet>.ts.net etc. (serve config)
 
 http:
@@ -14,10 +14,6 @@ http:
         referrerPolicy: "strict-origin-when-cross-origin"
         customFrameOptionsValue: "SAMEORIGIN"
         permissionsPolicy: "camera=(), microphone=(), geolocation=()"
-    funnel-proto:
-      headers:
-        customRequestHeaders:
-          X-Forwarded-Proto: "https"
     ha-headers:
       headers:
         customRequestHeaders:
@@ -62,15 +58,6 @@ http:
       service: forgejo
       tls: {}
 
-    authentik:
-      rule: "Host(`authentik.home`) || HostRegexp(`^authentik\\..+\\.ts\\.net$`)"
-      entryPoints:
-        - websecure
-      middlewares:
-        - sec-headers
-      service: authentik
-      tls: {}
-
     frigate:
       rule: "Host(`frigate.home`) || HostRegexp(`^frigate\\..+\\.ts\\.net$`)"
       entryPoints:
@@ -99,13 +86,30 @@ http:
       service: vaultwarden
       tls: {}
 
+    9router:
+      rule: "Host(`9router.home`) || HostRegexp(`^9router\\..+\\.ts\\.net$`)"
+      entryPoints:
+        - websecure
+      middlewares:
+        - sec-headers
+      service: 9router
+      tls: {}
+
     # Routers p/ o entrypoint tailscale (sem tls): o Tailscale Serve/Funnel ja
     # termina o TLS e faz proxy HTTP em 127.0.0.1:8181. Routers com tls:{} so
     # atendem trafego TLS e ignorariam o HTTP plain, por isso sao separados.
     homeassistant-ts:
-      rule: "HostRegexp(`^ha\\..+\\.ts\\.net$`)"
+      rule: "HostRegexp(`^ha\\..+\\.ts\\.net$`) || Host(`ha1.buru-eagle.ts.net`)"
       entryPoints:
         - tailscale
+      middlewares:
+        - ha-headers
+      service: homeassistant
+
+    homeassistant-ts-tls:
+      rule: "HostRegexp(`^ha\\..+\\.ts\\.net$`) || Host(`ha1.buru-eagle.ts.net`)"
+      entryPoints:
+        - tailscale-tls
       middlewares:
         - ha-headers
       service: homeassistant
@@ -121,12 +125,6 @@ http:
       entryPoints:
         - tailscale
       service: forgejo
-
-    authentik-ts:
-      rule: "HostRegexp(`^authentik\\..+\\.ts\\.net$`)"
-      entryPoints:
-        - tailscale
-      service: authentik
 
     frigate-ts:
       rule: "HostRegexp(`^frigate\\..+\\.ts\\.net$`)"
@@ -149,15 +147,6 @@ http:
         - tailscale
       service: vaultwarden
 
-    # Path-based routing p/ Funnel (dominio principal homelab.buru-eagle.ts.net)
-    funnel-root:
-      rule: "Host(`homelab.buru-eagle.ts.net`)"
-      entryPoints:
-        - tailscale
-      middlewares:
-        - funnel-proto
-      service: authentik
-
   services:
     homeassistant:
       loadBalancer:
@@ -175,12 +164,6 @@ http:
         servers:
           - url: "http://forgejo:3000"
 
-    authentik:
-      loadBalancer:
-        servers:
-          - url: "http://authentik-server:9000"
-        passHostHeader: true
-
     frigate:
       loadBalancer:
         servers:
@@ -192,8 +175,19 @@ http:
           - url: "http://immich-server:2283"
         passHostHeader: true
 
+    9router:
+      loadBalancer:
+        servers:
+          - url: "http://9router:20128"
+        passHostHeader: true
+
     vaultwarden:
       loadBalancer:
         servers:
           - url: "http://vaultwarden:80"
         passHostHeader: true
+
+tls:
+  certificates:
+    - certFile: /certs/ha1.crt
+      keyFile: /certs/ha1.key
