@@ -1,0 +1,90 @@
+---
+# OmniRoute stack — Free MIT AI Gateway: one endpoint, 339 providers (90+ free), 1200+ models
+# Acesso via Traefik: https://omniroute.home (websecure)
+# Dados persistidos em ../data/omniroute — gitignorado, versionado por backup tar
+# Perfil 'base': imagem minima sem CLI tools (recomendado para servidor)
+# Requer Redis (incluso no compose) para rate limiting distribuido
+# Variaveis de ambiente: TZ, DATA_DIR, PORT, DASHBOARD_PORT, API_PORT, REDIS_URL, etc
+# Segredos: INITIAL_PASSWORD via Docker secret, outras via .env (gerado pelo sops)
+# Ver .env.example do OmniRoute para lista completa de variaveis
+
+services:
+  omniroute:
+    image: diegosouzapw/omniroute:latest
+    container_name: omniroute
+    networks:
+      - backend
+    volumes:
+      - ../data/omniroute:/app/data
+      - /etc/localtime:/etc/localtime:ro
+    env_file:
+      - .env
+    environment:
+      - TZ=${TZ}
+      - DATA_DIR=/app/data
+      - PORT=20128
+      - DASHBOARD_PORT=20128
+      - API_PORT=20129
+      - API_HOST=0.0.0.0
+      - LIVE_WS_PORT=20132
+      - LIVE_WS_HOST=0.0.0.0
+      - LIVE_WS_ALLOWED_ORIGINS=https://omniroute.home,https://omniroute.buru-eagle.ts.net
+      - REDIS_URL=redis://redis:6379
+      - INITIAL_PASSWORD_FILE=/run/secrets/OMNIROUTE_INITIAL_PASSWORD
+      - NODE_OPTIONS=--max-old-space-size=2048
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.mjs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      redis:
+        condition: service_healthy
+    secrets:
+      - OMNIROUTE_INITIAL_PASSWORD
+    # Nao expor porta host — acesso exclusivo via Traefik (https://omniroute.home).
+    # Para acesso LAN direto: descomente a linha abaixo e remova o bloco correspondente
+    # no traefik/dynamic.yml (ports: ["192.168.20.189:20128:20128"]).
+    # Se precisar Tailscale Funnel: crie ts-omniroute sidecar com *-serve.json e ajuste
+    # LIVE_WS_ALLOWED_ORIGINS para https://omniroute.buru-eagle.ts.net
+
+  redis:
+    image: docker.io/library/redis:8.6.5-alpine
+    container_name: omniroute-redis
+    networks:
+      - backend
+    volumes:
+      - ../data/omniroute-redis:/data
+    command: redis-server --save 60 1 --loglevel warning
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    # Redis so acessivel via rede backend (redis:6379). Nao expoe porta no host.
+    # Para host-side tooling (redis-cli), descomente a linha abaixo:
+    # ports: ["127.0.0.1:6379:6379"]
+
+secrets:
+  OMNIROUTE_INITIAL_PASSWORD:
+    environment: OMNIROUTE_INITIAL_PASSWORD

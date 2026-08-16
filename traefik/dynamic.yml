@@ -77,13 +77,13 @@ http:
       service: vaultwarden
       tls: {}
 
-    9router:
-      rule: "Host(`9router.home`) || HostRegexp(`^9router\\..+\\.ts\\.net$`)"
+    omniroute:
+      rule: "Host(`omniroute.home`) || HostRegexp(`^omniroute\\..+\\.ts\\.net$`)"
       entryPoints:
         - websecure
       middlewares:
         - sec-headers
-      service: 9router
+      service: omniroute
       tls: {}
 
     # Routers p/ o entrypoint tailscale (sem tls): o Tailscale Serve/Funnel ja

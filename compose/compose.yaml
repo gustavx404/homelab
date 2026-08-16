@@ -13,4 +13,4 @@ include:
   - services.yaml
   - vaultwarden.yaml
   - tailscale.yaml
-  - 9router.yaml
+  - omniroute.yaml

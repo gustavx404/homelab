@@ -22,7 +22,7 @@
   <img src="https://img.shields.io/badge/Prometheus-E6522C?style=flat-square&logo=prometheus&logoColor=white" alt="Prometheus">
   <img src="https://img.shields.io/badge/Grafana-F46800?style=flat-square&logo=grafana&logoColor=white" alt="Grafana">
   <img src="https://img.shields.io/badge/MariaDB-003545?style=flat-square&logo=mariadb&logoColor=white" alt="MariaDB">
-  <img src="https://img.shields.io/badge/9Router-6B46C1?style=flat-square&logo=ai&logoColor=white" alt="9Router">
+  <img src="https://img.shields.io/badge/OmniRoute-6B46C1?style=flat-square&logo=ai&logoColor=white" alt="OmniRoute">
   <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis&logoColor=white" alt="Redis">
 </p>
@@ -36,7 +36,7 @@
 - [Apple](#apple) — HomeKit, Siri, Companion App
 - [Instalacao](#instalacao) — do zero ao ar em 5 minutos
 - [Servicos](#servicos) — catalogo completo com 28 containers
-- [9Router (AI Router)](#9router-ai-router) — LLM router & token saver
+- [OmniRoute (AI Gateway)](#omnirute-ai-gateway) — LLM gateway com 339 providers, 1200+ modelos
 - [Banco de dados](#banco-de-dados-mariadb) — MariaDB central
 - [Estrutura](#estrutura) — arvore de diretorios
 - [Seguranca](#seguranca) — IDS/IPS, CrowdSec, hardenings
@@ -82,7 +82,7 @@ flowchart TB
             Stats["suricata-stats"]
             Mumble["Mumble VoIP"]
             Kali["Kali"]
-            Router["9Router<br/>ai router"]
+            Router["OmniRoute<br/>AI Gateway"]
             Headroom["Headroom<br/>cost tracking"]
             Vault["Vaultwarden<br/>vault.home"]
         end
@@ -244,7 +244,7 @@ sem porta aberta, sem DNS local.
 | `git.home` | Forgejo | :white_check_mark: | `git.<tailnet>.ts.net` |
 | `frigate.home` | Frigate (NVR) | :white_check_mark: | — |
 | `vault.home` | Vaultwarden (senhas) | :white_check_mark: | `vault.<tailnet>.ts.net` |
-| `9router.home` | 9Router (AI Router) | :white_check_mark: | `9router.<tailnet>.ts.net` |
+| `omniroute.home` | OmniRoute (AI Gateway) | :white_check_mark: | `omniroute.<tailnet>.ts.net` |
 | `mumble://100.73.57.112:64738` | Mumble (VoIP) | Tailscale IP | direto (protocolo proprio) |
 
 > Para acesso **publico** (internet, sem Tailscale): habilite Funnel no
