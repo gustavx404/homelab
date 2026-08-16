@@ -35,4 +35,3 @@ http:
 #   (Configuracoes > Dispositivos e servicos > HomeKit Bridge no HA)
 homekit:
   advertise_ip: "192.168.20.189"
-

@@ -21,11 +21,11 @@ af-packet:
 
 outputs:
   - fast:
-      enabled: yes
+      enabled: true
       filename: fast.log
-      append: yes
+      append: true
   - eve-log:
-      enabled: yes
+      enabled: true
       filetype: regular
       filename: eve.json
       types:
@@ -36,5 +36,5 @@ outputs:
         - stats
 
 stats:
-  enabled: yes
+  enabled: true
   interval: 30

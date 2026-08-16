@@ -3,7 +3,7 @@
 Roda DENTRO do container authentik-server via `ak shell` (ver authentik-oidc-setup.sh).
 Imprime os Client ID/Secret gerados para copiar ao sops.
 Provider com redirect_uris e scopes por app; validez do access token 10min
-(evita colisao com a janela de 5min dos clientes Bitwarden/Immich).
+(evita colisao com a janela de 5min dos clientes Bitwarden).
 """
 
 from datetime import timedelta
@@ -25,17 +25,6 @@ SIGNING_KEY_NAME = "authentik Self-signed Certificate"
 SCOPE_PREFIX = "goauthentik.io/providers/oauth2/scope-"
 
 PROVIDERS = [
-    {
-        "name": "Immich",
-        "slug": "immich",
-        "launch": "https://photos.home",
-        "redirect_uris": [
-            "https://photos.home/auth/login",
-            "https://photos.home/user-settings",
-            "app.immich:///oauth-callback",
-        ],
-        "scopes": ["openid", "profile", "email"],
-    },
     {
         "name": "Vaultwarden",
         "slug": "vaultwarden",

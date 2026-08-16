@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # =============================================================================
 # Cria providers OAuth2/OIDC + applications no Authentik para os servicos
-# que usam SSO (Immich, Vaultwarden). Idempotente — pula providers existentes.
+# que usam SSO (Vaultwarden). Idempotente — pula providers existentes.
 #
 # Uso:   bash scripts/authentik-oidc-setup.sh
 # Depois: copie os Client ID/Secret impressos para o sops:
-#   sops compose/sops-secrets.yaml   (IMMICH_OIDC_*, VAULTWARDEN_OIDC_*)
+#   sops compose/sops-secrets.yaml   (VAULTWARDEN_OIDC_*)
 #   bash scripts/decrypt-secrets.sh  (gera compose/.env)
-#   docker compose -f compose/compose.yaml up -d immich vaultwarden
+#   docker compose -f compose/compose.yaml up -d vaultwarden
 # =============================================================================
 set -euo pipefail
 

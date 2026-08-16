@@ -58,8 +58,6 @@ jobs:
           - ghcr.io/blakeblackshear/frigate:stable
           - valkey/valkey:9
           - docker.io/vaultwarden/server:1.37.1
-          - decolua/9router:0.5.55
-          - ghcr.io/chopratejas/headroom:latest
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4

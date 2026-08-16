@@ -154,12 +154,6 @@ http:
         servers:
           - url: "http://frigate:8971"
 
-    9router:
-      loadBalancer:
-        servers:
-          - url: "http://9router:20128"
-        passHostHeader: true
-
     vaultwarden:
       loadBalancer:
         servers:
