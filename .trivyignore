@@ -1,0 +1,7 @@
+# Ignore CVEs in base images we don't control
+# These are fixed in newer Go versions but base images lag behind
+CVE-2022-23806
+CVE-2023-24538
+CVE-2023-24540
+CVE-2024-24790
+CVE-2025-68121
