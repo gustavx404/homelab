@@ -73,14 +73,14 @@ services:
       start_period: 30s
 
   suricata-stats:
-    image: python:3.13-alpine
+    build:
+      context: ..
+      dockerfile: Dockerfile.suricata-stats
     container_name: suricata-stats
     networks:
       - backend
     volumes:
       - ../data/suricata:/data:ro
-      - ../scripts/suricata-stats.py:/app/suricata-stats.py:ro
-    command: ["python3", "/app/suricata-stats.py"]
     security_opt:
       - no-new-privileges:true
     read_only: true

@@ -1,0 +1,22 @@
+# Dockerfile.suricata-stats — Multi-stage build for suricata stats collector
+# Runtime stage - distroless for minimal attack surface
+FROM gcr.io/distroless/python3-debian12:nonroot
+
+WORKDIR /app
+
+# Copy application (stdlib only, no external deps)
+COPY scripts/suricata-stats.py /app/suricata-stats.py
+
+# Environment
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Run as non-root user (distroless nonroot UID 65532)
+USER 65532:65532
+
+EXPOSE 8899
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8899/health')" || exit 1
+
+ENTRYPOINT ["python", "suricata-stats.py"]
