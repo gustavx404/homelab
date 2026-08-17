@@ -28,11 +28,22 @@ fi
 echo "==> 2/5 Docker Compose validate"
 # ---------------------------------------------------------------------------
 if [[ -f compose/.env.example ]]; then
+  # Valida o compose com o template, mas PRESERVA o .env real (segredos SOPS)
+  # e o restaura ao final — nunca sobrescrever o .env em producao.
+  if [[ -f compose/.env ]]; then
+    cp compose/.env /tmp/compose.env.backup.$$
+    trap 'rm -f /tmp/compose.env.backup.$$' EXIT
+  fi
   cp compose/.env.example compose/.env
   if docker compose -f compose/compose.yaml config --quiet 2>/dev/null; then
     ok "docker compose config"
   else
     fail "docker compose config -- configuracao invalida"
+  fi
+  if [[ -f /tmp/compose.env.backup.$$ ]]; then
+    cp /tmp/compose.env.backup.$$ compose/.env
+    rm -f /tmp/compose.env.backup.$$
+    trap - EXIT
   fi
 else
   fail "compose/.env.example ausente"

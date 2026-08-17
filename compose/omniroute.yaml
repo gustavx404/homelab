@@ -31,7 +31,7 @@ services:
       - LIVE_WS_ALLOWED_ORIGINS=https://omniroute.home,https://omniroute.buru-eagle.ts.net
       - REDIS_URL=redis://redis:6379
       - INITIAL_PASSWORD_FILE=/run/secrets/OMNIROUTE_INITIAL_PASSWORD
-      - NODE_OPTIONS=--max-old-space-size=2048
+      - NODE_OPTIONS=--max-old-space-size=2300
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -39,7 +39,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 2.5G
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "healthcheck.mjs"]
@@ -52,9 +52,10 @@ services:
         condition: service_healthy
     secrets:
       - OMNIROUTE_INITIAL_PASSWORD
-    # Nao expor porta host — acesso exclusivo via Traefik (https://omniroute.home).
-    # Para acesso LAN direto: descomente a linha abaixo e remova o bloco correspondente
-    # no traefik/dynamic.yml (ports: ["192.168.20.189:20128:20128"]).
+    ports:
+      - "127.0.0.1:20128:20128"
+    # Porta 20128 exposta em localhost para acesso MCP/A2A local.
+    # Dashboard e API OpenAI-compat continuam acessíveis via Traefik (https://omniroute.home).
     # Se precisar Tailscale Funnel: crie ts-omniroute sidecar com *-serve.json e ajuste
     # LIVE_WS_ALLOWED_ORIGINS para https://omniroute.buru-eagle.ts.net
 
