@@ -49,8 +49,7 @@ echo
 echo "Setup completo. Conecte no Mumble como SuperUser:"
 echo "  Name:     SuperUser"
 echo "  Password: (MUMBLE_CONFIG_supw do sops)"
-echo "  Server:   192.168.20.189 (IPv4)"
-echo "  Server:   [2804:1530:10b:d8b5::189] (IPv6 publico)"
+echo "  Server:   ${MUMBLE_PUBLIC_HOST:-<defina MUMBLE_PUBLIC_HOST no .env>}"
 echo
 echo "Depois registre seu usuario normal e de promote via cliente."
 echo "https://wiki.mumble.info/wiki/ACL_and_Groups"
