@@ -23,7 +23,6 @@
   <img src="https://img.shields.io/badge/Grafana-F46800?style=flat-square&logo=grafana&logoColor=white" alt="Grafana">
   <img src="https://img.shields.io/badge/MariaDB-003545?style=flat-square&logo=mariadb&logoColor=white" alt="MariaDB">
   <img src="https://img.shields.io/badge/OmniRoute-6B46C1?style=flat-square&logo=ai&logoColor=white" alt="OmniRoute">
-  <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis&logoColor=white" alt="Redis">
 </p>
 
@@ -83,7 +82,6 @@ flowchart TB
             Mumble["Mumble VoIP"]
             Kali["Kali"]
             AI["OmniRoute<br/>AI Gateway"]
-            Headroom["Headroom<br/>cost tracking"]
             Vault["Vaultwarden<br/>vault.home"]
         end
 
@@ -98,7 +96,6 @@ flowchart TB
     Internet -->|":80 :443"| Traefik
     Traefik -->|"hostname routing"| HA
     Traefik -->|"omniroute.home"| AI
-    AI --> Headroom
     Traefik --> Grafana
     Traefik --> Forgejo
     Traefik --> Frigate
@@ -124,7 +121,6 @@ flowchart TB
 | Suricata + CrowdSec | IDS/IPS — detecta scans, aplica bans, notifica via HA webhook |
 | Prometheus + Grafana | Metricas e dashboards de todos os servicos |
 | OmniRoute | AI Gateway — roteia LLM requests (OpenAI/Anthropic/Gemini/locals), dashboard em https://omniroute.home |
-| Headroom | Cost tracking sidecar para OmniRoute — metricas de gasto por modelo |
 
 ---
 
@@ -346,7 +342,6 @@ docker compose -f compose/compose.yaml up -d omniroute
 - OpenRouter, Groq, Together, DeepSeek, etc (339 providers, 1200+ modelos)
 
 **Routing rules** (UI > Routes): defina prioridade por custo, latencia, qualidade, ou modelo especifico.
-Headroom sidecar coleta metricas de custo/tokens por request — visiveis no dashboard.
 
 > **Seguranca**: `INITIAL_PASSWORD` via Docker secret (`/run/secrets/OMNIROUTE_INITIAL_PASSWORD`), nunca env var.
 > Containers com `cap_drop: [ALL]`, `read_only: true`, `no-new-privileges:true`.
