@@ -35,8 +35,8 @@
 - [Acesso Remoto](#acesso-remoto-tailscale) — Tailscale (WireGuard mesh)
 - [Apple](#apple) — HomeKit, Siri, Companion App
 - [Instalacao](#instalacao) — do zero ao ar em 5 minutos
-- [Servicos](#servicos) — catalogo completo com 28 containers
-- [OmniRoute (AI Gateway)](#omnirute-ai-gateway) — LLM gateway com 339 providers, 1200+ modelos
+- [Servicos](#servicos) — catalogo completo com 20 containers
+- [OmniRoute (AI Gateway)](#omniroute-ai-gateway) — LLM gateway com 339 providers, 1200+ modelos
 - [Banco de dados](#banco-de-dados-mariadb) — MariaDB central
 - [Estrutura](#estrutura) — arvore de diretorios
 - [Seguranca](#seguranca) — IDS/IPS, CrowdSec, hardenings
@@ -82,7 +82,7 @@ flowchart TB
             Stats["suricata-stats"]
             Mumble["Mumble VoIP"]
             Kali["Kali"]
-            Router["OmniRoute<br/>AI Gateway"]
+            AI["OmniRoute<br/>AI Gateway"]
             Headroom["Headroom<br/>cost tracking"]
             Vault["Vaultwarden<br/>vault.home"]
         end
@@ -97,8 +97,8 @@ flowchart TB
     Tailscale -->|"subnet routes<br/>192.168.20.0/24 + 172.19.0.0/16"| Backend
     Internet -->|":80 :443"| Traefik
     Traefik -->|"hostname routing"| HA
-    Traefik -->|"9router.home"| Router
-    Router --> Headroom
+    Traefik -->|"omniroute.home"| AI
+    AI --> Headroom
     Traefik --> Grafana
     Traefik --> Forgejo
     Traefik --> Frigate
@@ -123,8 +123,8 @@ flowchart TB
 | MariaDB | Banco central — HA (recorder), Forgejo, Grafana, CrowdSec, Mumble, Vaultwarden |
 | Suricata + CrowdSec | IDS/IPS — detecta scans, aplica bans, notifica via HA webhook |
 | Prometheus + Grafana | Metricas e dashboards de todos os servicos |
-| 9Router | AI Router & Token Saver — roteia LLM requests (OpenAI/Anthropic/Gemini/locals), dashboard em https://9router.home |
-| Headroom | Cost tracking sidecar para 9Router — metricas de gasto por modelo |
+| OmniRoute | AI Gateway — roteia LLM requests (OpenAI/Anthropic/Gemini/locals), dashboard em https://omniroute.home |
+| Headroom | Cost tracking sidecar para OmniRoute — metricas de gasto por modelo |
 
 ---
 
@@ -273,8 +273,8 @@ sem porta aberta, sem DNS local.
 | media | frigate | `stable` | `:8554,8555` | backend |
 | vaultwarden | vaultwarden | `1.37.1` | `vault.home` | backend |
 | network | tailscale | `latest` | subnet router | host |
-| 9router | 9router | `0.5.55` | `9router.home` | backend |
-| 9router | headroom | `latest` | interno | backend |
+| ai | omniroute | `latest` | `omniroute.home` | backend |
+| ai | redis | `8.6.5-alpine` | interno | backend |
 | home | ts-homeassistant | `latest` | `https://ha1.<tailnet>.ts.net` | backend |
 | services | ts-forgejo | `latest` | `https://git.<tailnet>.ts.net` | backend |
 | vaultwarden | ts-vaultwarden | `latest` | `https://vault.<tailnet>.ts.net` | backend |
@@ -307,18 +307,18 @@ Provisionamento em duas camadas no primeiro boot (datadir vazio):
 
 ---
 
-## 9Router (AI Router)
+## OmniRoute (AI Gateway)
 
-[9Router](https://github.com/decolua/9router) e um **roteador LLM gratuito** — recebe requests
+[OmniRoute](https://github.com/omnilabs-ai/OmniRouter) e um **gateway LLM gratuito** — recebe requests
 OpenAI/Anthropic/Gemini/Ollama, escolhe o melhor modelo (custo/qualidade/latencia) e
-responde via API compativel. Dashboard web em `https://9router.home` (via Traefik).
+responde via API compativel. Dashboard web em `https://omniroute.home` (via Traefik).
 
-Stack `compose/9router.yaml` (rede `backend`, sem portas expostas no host):
+Stack `compose/omniroute.yaml` (rede `backend`, sem portas expostas no host — localhost:20128 p/ MCP/A2A):
 
 | servico | imagem | funcao |
 |---|---|---|
-| 9router | `decolua/9router:0.5.55` | API router + UI (`:20128` interno) |
-| headroom | `ghcr.io/chopratejas/headroom:latest` | Cost tracking sidecar (`:8787` interno) |
+| omniroute | `diegosouzapw/omniroute:latest` | API gateway + UI + MCP (`:20128` interno) |
+| redis | `redis:8.6.5-alpine` | Rate limiting distribuido (`:6379` interno) |
 
 **Setup (1x)**:
 
@@ -327,30 +327,30 @@ Stack `compose/9router.yaml` (rede `backend`, sem portas expostas no host):
 openssl rand -base64 32
 
 # Adicione ao sops (valor encriptado)
-sops compose/sops-secrets.yaml   # 9ROUTER_INITIAL_PASSWORD: <senha_gerada>
+sops compose/sops-secrets.yaml   # OMNIROUTE_INITIAL_PASSWORD: <senha_gerada>
 bash scripts/decrypt-secrets.sh
-docker compose -f compose/compose.yaml up -d 9router
+docker compose -f compose/compose.yaml up -d omniroute
 ```
 
 **Acesso**:
-- LAN/tailnet: `https://9router.home` (via Traefik)
-- Dashboard: `https://9router.home` — login com `admin` / senha do `9ROUTER_INITIAL_PASSWORD`
-- API OpenAI-compat: `https://9router.home/v1` — use como baseURL no cliente (ex.: `openai.baseURL`)
+- LAN/tailnet: `https://omniroute.home` (via Traefik)
+- Dashboard: `https://omniroute.home` — login com `admin` / senha do `OMNIROUTE_INITIAL_PASSWORD`
+- API OpenAI-compat: `https://omniroute.home/v1` — use como baseURL no cliente (ex.: `openai.baseURL`)
+- MCP/A2A local: `http://127.0.0.1:20128` (apenas localhost)
 
 **Providers suportados** (configurados no dashboard UI):
 - OpenAI (GPT-4o, GPT-4o-mini, o1, etc)
 - Anthropic (Claude 3.5 Sonnet, Haiku, Opus)
 - Google (Gemini 1.5 Pro/Flash)
 - Ollama (modelos locais via `http://host.docker.internal:11434`)
-- OpenRouter, Groq, Together, DeepSeek, etc
+- OpenRouter, Groq, Together, DeepSeek, etc (339 providers, 1200+ modelos)
 
 **Routing rules** (UI > Routes): defina prioridade por custo, latencia, qualidade, ou modelo especifico.
-Headroom (`http://headroom:8787`) coleta metricas de custo/tokens por request — visiveis no dashboard.
+Headroom sidecar coleta metricas de custo/tokens por request — visiveis no dashboard.
 
-> **Seguranca**: `INITIAL_PASSWORD` via Docker secret (`/run/secrets/9ROUTER_INITIAL_PASSWORD`), nunca env var.
+> **Seguranca**: `INITIAL_PASSWORD` via Docker secret (`/run/secrets/OMNIROUTE_INITIAL_PASSWORD`), nunca env var.
 > Containers com `cap_drop: [ALL]`, `read_only: true`, `no-new-privileges:true`.
-
-> **Alternativa**: [OmniRouter](https://github.com/omnilabs-ai/OmniRouter) — projeto similar de roteamento LLM. Ainda sem imagem Docker oficial publicada. Quando disponivel, migracao simples: trocar imagem no `compose/9router.yaml` e ajustar variaveis de ambiente.
+> Memoria limitada a 2.5G, NODE_OPTIONS=--max-old-space-size=2300.
 
 ---
 ## Estrutura
@@ -368,7 +368,7 @@ compose/
 ├── media.yaml             frigate (NVR)
 ├── vaultwarden.yaml       vaultwarden (senhas, MariaDB central)
 ├── services.yaml          traefik · forgejo · mumble · kali
-├── 9router.yaml           9router (AI Router) + headroom
+├── omniroute.yaml         omniroute (AI Gateway) + redis
 ├── tailscale-serve.json   serve config do subnet router (Funnel)
 ├── ha-serve.json          serve config do sidecar homeassistant
 ├── forgejo-serve.json     serve config do sidecar forgejo
@@ -480,7 +480,7 @@ Conectar como SuperUser p/ administrar:
 - `no-new-privileges:true`, healthchecks e resource limits em todos os containers
 - Secrets: SOPS + age (`.env` gitignored, `.sops.yaml` com chave publica commitavel)
 - Tailscale: auth key ephemeral, subnet routes aprovadas manualmente
-- 9Router: `INITIAL_PASSWORD` via Docker secret, `cap_drop: [ALL]`, `read_only: true`, `no-new-privileges:true`
+- OmniRoute: `INITIAL_PASSWORD` via Docker secret, `cap_drop: [ALL]`, `read_only: true`, `no-new-privileges:true`, memoria 2.5G
 - Vaultwarden: senhas (DB, redis, admin token) via Docker secrets
   (`_FILE`/`/run/secrets`), nunca env vars
 
@@ -537,7 +537,7 @@ docker compose -f compose/compose.yaml up -d
 | [EASUN SMG II ESPHome](https://github.com/robgt978/Easun-SMG-II-11Kw-esphome-) | robgt978 |
 | [Tailscale](https://tailscale.com/) | Tailscale Inc. |
 | [ScaleTail](https://github.com/tailscale-dev/ScaleTail) | Tailscale |
-| [9Router](https://github.com/decolua/9router) | decolua |
+| [OmniRoute](https://github.com/omnilabs-ai/OmniRouter) | omnilabs-ai |
 | [Suricata](https://suricata.io/) | OISF |
 | [CrowdSec](https://github.com/crowdsecurity/crowdsec) | CrowdSec |
 | [Mumble](https://github.com/mumble-voip/mumble) | Mumble VoIP |
