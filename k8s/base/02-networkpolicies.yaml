@@ -1,0 +1,317 @@
+# NetworkPolicy default-deny por namespace + allow-lists
+# Equivalente ao isolamento da rede Docker `backend`
+
+---
+# Namespace core - permitir tráfego entre apps core + ingress do Traefik + MariaDB
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: core-default-deny
+  namespace: core
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+  ingress: []
+  egress: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: core-allow-internal
+  namespace: core
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - from:
+        - podSelector: {}  # tráfego entre pods do namespace core
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: network  # Traefik
+      ports:
+        - protocol: TCP
+          port: 8123   # Home Assistant
+        - protocol: TCP
+          port: 3000   # Forgejo
+        - protocol: TCP
+          port: 8080   # Vaultwarden
+        - protocol: TCP
+          port: 64738  # Mumble
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: mariadb
+      ports:
+        - protocol: TCP
+          port: 3306
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring  # Prometheus scrape
+      ports:
+        - protocol: TCP
+          port: 9090
+        - protocol: TCP
+          port: 3000
+    - to: []  # DNS, internet
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# Namespace security - Suricata, CrowdSec, suricata-stats
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: security-default-deny
+  namespace: security
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+  ingress: []
+  egress: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: security-allow
+  namespace: security
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - from:
+        - podSelector: {}  # interno
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring  # Prometheus scrape
+      ports:
+        - protocol: TCP
+          port: 8080   # CrowdSec LAPI
+        - protocol: TCP
+          port: 8899   # suricata-stats
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: mariadb
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: core
+      ports:
+        - protocol: TCP
+          port: 3306
+    - to: []  # DNS, updates
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# Namespace monitoring
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: monitoring-default-deny
+  namespace: monitoring
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+  ingress: []
+  egress: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: monitoring-allow
+  namespace: monitoring
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: network  # Traefik/Grafana ingress
+      ports:
+        - protocol: TCP
+          port: 9090   # Prometheus
+        - protocol: TCP
+          port: 3000   # Grafana
+  egress:
+    - to:
+        - namespaceSelector: {}  # scrape all namespaces
+      ports:
+        - protocol: TCP
+          port: 8123   # HA
+        - protocol: TCP
+          port: 3000   # Forgejo
+        - protocol: TCP
+          port: 9090   # Prometheus self
+        - protocol: TCP
+          port: 8080   # CrowdSec
+        - protocol: TCP
+          port: 5000   # Frigate
+    - to:
+        - podSelector:
+            matchLabels:
+              app: mariadb
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: core
+      ports:
+        - protocol: TCP
+          port: 3306
+    - to: []  # DNS
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# Namespace media - Frigate
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: media-default-deny
+  namespace: media
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+  ingress: []
+  egress: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: media-allow
+  namespace: media
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: network  # Traefik
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io.metadata.name: monitoring  # Prometheus
+      ports:
+        - protocol: TCP
+          port: 5000   # Frigate
+        - protocol: TCP
+          port: 8554   # RTSP
+        - protocol: TCP
+          port: 8555   # WebRTC
+  egress: []
+
+---
+# Namespace ai - OmniRoute + Redis
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ai-default-deny
+  namespace: ai
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+  ingress: []
+  egress: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ai-allow
+  namespace: ai
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: network  # Traefik
+      ports:
+        - protocol: TCP
+          port: 20128  # OmniRoute API/Dashboard
+        - protocol: TCP
+          port: 20129  # OmniRoute API
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: omniroute-redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    - to: []  # DNS, internet (providers LLM externos)
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+        - protocol: TCP
+          port: 443
+
+---
+# Namespace network - Traefik
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: network-default-deny
+  namespace: network
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+  ingress: []
+  egress: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: network-allow
+  namespace: network
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - from: []  # internet/LoadBalancer
+      ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 8181  # Tailscale
+  egress:
+    - to:
+        - namespaceSelector: {}  # rotear para todos os namespaces
+      ports:
+        - protocol: TCP
+          port: 8123   # HA
+        - protocol: TCP
+          port: 3000   # Forgejo/Grafana
+        - protocol: TCP
+          port: 8080   # Vaultwarden
+        - protocol: TCP
+          port: 5000   # Frigate
+        - protocol: TCP
+          port: 20128  # OmniRoute
+        - protocol: TCP
+          port: 20129  # OmniRoute API
+    - to: []  # Let's Encrypt, DNS
+      ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

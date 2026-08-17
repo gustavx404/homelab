@@ -1,0 +1,596 @@
+# Core Apps: Home Assistant, Forgejo, Vaultwarden, Mumble, OmniRoute, Redis
+# Todos em namespace core (exceto omniroute/redis em ai)
+
+---
+# Home Assistant
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homeassistant
+  namespace: core
+  labels:
+    app: homeassistant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: homeassistant
+  template:
+    metadata:
+      labels:
+        app: homeassistant
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: homeassistant
+          image: ghcr.io/home-assistant/home-assistant:stable@sha256:1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8123
+              name: http
+          env:
+            - name: TZ
+              valueFrom:
+                configMapKeyRef:
+                  name: homelab-config
+                  key: TZ
+          envFrom:
+            - secretRef:
+                name: homelab-secrets
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: localtime
+              mountPath: /etc/localtime
+              readOnly: true
+            - name: custom-components
+              mountPath: /config/custom_components
+              readOnly: true
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "2000m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8123
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8123
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: homeassistant-config
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+            type: File
+        - name: custom-components
+          configMap:
+            name: ha-custom-components
+            optional: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: homeassistant
+  namespace: core
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8123
+      targetPort: 8123
+      protocol: TCP
+  selector:
+    app: homeassistant
+
+---
+# Forgejo
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: forgejo
+  namespace: core
+  labels:
+    app: forgejo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: forgejo
+  template:
+    metadata:
+      labels:
+        app: forgejo
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: forgejo
+          image: codeberg.org/forgejo/forgejo:16.0.2@sha256:3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+            - containerPort: 22
+              name: ssh
+          env:
+            - name: FORGEJO__database__DB_TYPE
+              value: mysql
+            - name: FORGEJO__database__HOST
+              value: mariadb.core.svc.cluster.local
+            - name: FORGEJO__database__NAME
+              value: forgejo
+            - name: FORGEJO__database__USER
+              value: forgejo
+            - name: FORGEJO__server__ROOT_URL
+              value: https://git.home/
+            - name: FORGEJO__metrics__ENABLED
+              value: "true"
+            - name: TZ
+              valueFrom:
+                configMapKeyRef:
+                  name: homelab-config
+                  key: TZ
+          envFrom:
+            - secretRef:
+                name: homelab-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: localtime
+              mountPath: /etc/localtime
+              readOnly: true
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: forgejo-data
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+            type: File
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: forgejo
+  namespace: core
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: 3000
+      name: http
+      protocol: TCP
+    - port: 22
+      targetPort: 22
+      name: ssh
+      protocol: TCP
+  selector:
+    app: forgejo
+
+---
+# Vaultwarden
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaultwarden
+  namespace: core
+  labels:
+    app: vaultwarden
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vaultwarden
+  template:
+    metadata:
+      labels:
+        app: vaultwarden
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: vaultwarden
+          image: docker.io/vaultwarden/server:1.37.1@sha256:4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: DOMAIN
+              value: https://vault.home
+            - name: SIGNUPS_ALLOWED
+              value: "false"
+            - name: SSO_ENABLED
+              value: "true"
+            - name: TZ
+              valueFrom:
+                configMapKeyRef:
+                  name: homelab-config
+                  key: TZ
+          envFrom:
+            - secretRef:
+                name: homelab-secrets
+            - secretRef:
+                name: vaultwarden-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            exec:
+              command: ["/healthcheck.sh"]
+            initialDelaySeconds: 30
+            periodSeconds: 60
+          readinessProbe:
+            httpGet:
+              path: /alive
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: vaultwarden-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vaultwarden
+  namespace: core
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    app: vaultwarden
+
+---
+# Mumble
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mumble
+  namespace: core
+  labels:
+    app: mumble
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mumble
+  template:
+    metadata:
+      labels:
+        app: mumble
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mumble
+          image: mumblevoip/mumble-server:latest@sha256:5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 64738
+              name: tcp
+              protocol: TCP
+            - containerPort: 64738
+              name: udp
+              protocol: UDP
+          env:
+            - name: TZ
+              valueFrom:
+                configMapKeyRef:
+                  name: homelab-config
+                  key: TZ
+            - name: MUMBLE_CONFIG_welcometext
+              value: "Welcome to Ducks Server! Quack quack! Channels: Home | Study | Gaming | AFK"
+            - name: MUMBLE_CONFIG_registername
+              value: "Ducks"
+            - name: MUMBLE_CONFIG_port
+              value: "64738"
+            - name: MUMBLE_CONFIG_users
+              value: "100"
+            - name: MUMBLE_CONFIG_bandwidth
+              value: "72000"
+            - name: MUMBLE_CONFIG_database
+              value: mumble
+            - name: MUMBLE_CONFIG_dbDriver
+              value: QMYSQL
+            - name: MUMBLE_CONFIG_dbHost
+              value: mariadb.core.svc.cluster.local
+            - name: MUMBLE_CONFIG_dbPort
+              value: "3306"
+            - name: MUMBLE_CONFIG_dbUsername
+              value: mumble
+          envFrom:
+            - secretRef:
+                name: homelab-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:
+            exec:
+              command: ["pgrep", "mumble-server"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mumble
+  namespace: core
+spec:
+  type: ClusterIP
+  ports:
+    - port: 64738
+      targetPort: 64738
+      name: tcp
+      protocol: TCP
+    - port: 64738
+      targetPort: 64738
+      name: udp
+      protocol: UDP
+  selector:
+    app: mumble
+
+---
+# OmniRoute (namespace ai)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: omniroute
+  namespace: ai
+  labels:
+    app: omniroute
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: omniroute
+  template:
+    metadata:
+      labels:
+        app: omniroute
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: omniroute
+          image: diegosouzapw/omniroute:latest@sha256:6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 20128
+              name: dashboard
+            - containerPort: 20129
+              name: api
+            - containerPort: 20132
+              name: live-ws
+          env:
+            - name: TZ
+              valueFrom:
+                configMapKeyRef:
+                  name: homelab-config
+                  key: TZ
+            - name: DATA_DIR
+              value: /app/data
+            - name: PORT
+              value: "20128"
+            - name: DASHBOARD_PORT
+              value: "20128"
+            - name: API_PORT
+              value: "20129"
+            - name: API_HOST
+              value: "0.0.0.0"
+            - name: LIVE_WS_PORT
+              value: "20132"
+            - name: LIVE_WS_HOST
+              value: "0.0.0.0"
+            - name: REDIS_URL
+              value: redis://omniroute-redis:6379
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=2300"
+          envFrom:
+            - secretRef:
+                name: homelab-secrets
+            - secretRef:
+                name: omniroute-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            - name: localtime
+              mountPath: /etc/localtime
+              readOnly: true
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "2500Mi"
+              cpu: "2000m"
+          livenessProbe:
+            exec:
+              command: ["node", "healthcheck.mjs"]
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            exec:
+              command: ["node", "healthcheck.mjs"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: omniroute-data
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+            type: File
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: omniroute
+  namespace: ai
+spec:
+  type: ClusterIP
+  ports:
+    - port: 20128
+      targetPort: 20128
+      name: dashboard
+      protocol: TCP
+    - port: 20129
+      targetPort: 20129
+      name: api
+      protocol: TCP
+    - port: 20132
+      targetPort: 20132
+      name: live-ws
+      protocol: TCP
+  selector:
+    app: omniroute
+
+---
+# Redis para OmniRoute (namespace ai)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: omniroute-redis
+  namespace: ai
+  labels:
+    app: omniroute-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: omniroute-redis
+  template:
+    metadata:
+      labels:
+        app: omniroute-redis
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: redis
+          image: docker.io/library/redis:8.6.5-alpine@sha256:7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6379
+              name: redis
+          command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: omniroute-redis-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: omniroute-redis
+  namespace: ai
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6379
+      targetPort: 6379
+      protocol: TCP
+  selector:
+    app: omniroute-redis

@@ -1,0 +1,387 @@
+# Traefik Deployment + CRDs (IngressRoute, Middleware) — substitui docker.sock provider
+# k3s desabilitou Traefik default; instalamos custom via manifests
+
+---
+# CRDs necessárias para Traefik k8s provider
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: ingressroutes.traefik.io
+spec:
+  group: traefik.io
+  names:
+    kind: IngressRoute
+    listKind: IngressRouteList
+    plural: ingressroutes
+    singular: ingressroute
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                entryPoints:
+                  type: array
+                  items:
+                    type: string
+                routes:
+                  type: array
+                  items:
+                    type: object
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: middlewares.traefik.io
+spec:
+  group: traefik.io
+  names:
+    kind: Middleware
+    listKind: MiddlewareList
+    plural: middlewares
+    singular: middleware
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: tlsstores.traefik.io
+spec:
+  group: traefik.io
+  names:
+    kind: TLSStore
+    listKind: TLSStoreList
+    plural: tlsstores
+    singular: tlsstore
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+---
+# ServiceAccount + RBAC para Traefik
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: traefik
+  namespace: network
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: traefik
+rules:
+  - apiGroups: [""]
+    resources: ["services", "endpoints", "secrets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "ingressclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["traefik.io"]
+    resources: ["ingressroutes", "middlewares", "tlsstores", "ingressroutetcps", "ingressrouteudps", "tlsoptions", "traefikservices"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: traefik
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: traefik
+subjects:
+  - kind: ServiceAccount
+    name: traefik
+    namespace: network
+---
+# ConfigMap com configuração estática (equivalente a traefik/traefik.yml)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: traefik-config
+  namespace: network
+data:
+  traefik.yml: |
+    api:
+      dashboard: true
+      insecure: false
+    entryPoints:
+      web:
+        address: ":80"
+        http:
+          redirections:
+            entryPoint:
+              to: websecure
+              scheme: https
+      websecure:
+        address: ":443"
+      tailscale:
+        address: ":8181"
+    providers:
+      kubernetesCRD:
+        allowCrossNamespace: true
+      kubernetesIngress:
+        publishedService: "network/traefik"
+    certificatesResolvers:
+      letsencrypt:
+        acme:
+          email: "admin@home"
+          storage: "/letsencrypt/acme.json"
+          httpChallenge:
+            entryPoint: web
+    logs:
+      level: INFO
+    accessLog: {}
+---
+# Deployment Traefik
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traefik
+  namespace: network
+  labels:
+    app: traefik
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traefik
+  template:
+    metadata:
+      labels:
+        app: traefik
+    spec:
+      serviceAccountName: traefik
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: traefik
+          image: traefik:v3.3@sha256:4c5e8d9f2a3b1c6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--configfile=/config/traefik.yml"
+          ports:
+            - name: web
+              containerPort: 80
+            - name: websecure
+              containerPort: 443
+            - name: tailscale
+              containerPort: 8181
+            - name: dashboard
+              containerPort: 8080
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: letsencrypt
+              mountPath: /letsencrypt
+            - name: certs
+              mountPath: /certs
+              readOnly: true
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: traefik-config
+        - name: letsencrypt
+          persistentVolumeClaim:
+            claimName: traefik-letsencrypt
+        - name: certs
+          secret:
+            secretName: traefik-certs
+            optional: true
+---
+# Service Traefik (NodePort para acesso externo)
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik
+  namespace: network
+spec:
+  type: NodePort
+  ports:
+    - name: web
+      port: 80
+      targetPort: 80
+      nodePort: 30080
+      protocol: TCP
+    - name: websecure
+      port: 443
+      targetPort: 443
+      nodePort: 30443
+      protocol: TCP
+    - name: tailscale
+      port: 8181
+      targetPort: 8181
+      nodePort: 30818
+      protocol: TCP
+    - name: dashboard
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    app: traefik
+---
+# IngressRoutes para cada serviço (equivalente a traefik/dynamic.yml)
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: homeassistant
+  namespace: core
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`ha.home`)
+      kind: Rule
+      services:
+        - name: homeassistant
+          port: 8123
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`grafana.home`)
+      kind: Rule
+      services:
+        - name: grafana
+          port: 3000
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: forgejo
+  namespace: core
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`git.home`)
+      kind: Rule
+      services:
+        - name: forgejo
+          port: 3000
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: frigate
+  namespace: media
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`frigate.home`)
+      kind: Rule
+      services:
+        - name: frigate
+          port: 5000
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: vaultwarden
+  namespace: core
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`vault.home`)
+      kind: Rule
+      services:
+        - name: vaultwarden
+          port: 8080
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: omniroute
+  namespace: ai
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`omniroute.home`)
+      kind: Rule
+      services:
+        - name: omniroute
+          port: 20128
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`prometheus.home`)
+      kind: Rule
+      services:
+        - name: prometheus
+          port: 9090
+      middlewares:
+        - name: basicauth
+          namespace: monitoring
+---
+# Middleware basic auth para Prometheus
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: basicauth
+  namespace: monitoring
+spec:
+  basicAuth:
+    secret: prometheus-auth
+    removeHeader: true

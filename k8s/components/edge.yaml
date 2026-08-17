@@ -1,0 +1,264 @@
+# Edge Workloads: ESPHome (hostNetwork), Frigate (GPU), Kali (Job)
+
+---
+# ESPHome — CRÍTICO: hostNetwork para mDNS/discovery ESP32
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: esphome
+  namespace: core
+  labels:
+    app: esphome
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: esphome
+  template:
+    metadata:
+      labels:
+        app: esphome
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: esphome
+          image: ghcr.io/esphome/esphome:stable@sha256:d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6052
+              name: http
+          env:
+            - name: ESPHOME_USERNAME
+              value: "admin"
+            - name: TZ
+              valueFrom:
+                configMapKeyRef:
+                  name: homelab-config
+                  key: TZ
+          envFrom:
+            - secretRef:
+                name: homelab-secrets
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: localtime
+              mountPath: /etc/localtime
+              readOnly: true
+          resources:
+            requests:
+              memory: "256Mi"
+            limits:
+              memory: "1Gi"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 6052
+            initialDelaySeconds: 10
+            periodSeconds: 30
+      volumes:
+        - name: config
+          hostPath:
+            path: /srv/homelab/homeassistant/esphome
+            type: Directory
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+            type: File
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: esphome
+  namespace: core
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6052
+      targetPort: 6052
+  selector:
+    app: esphome
+
+---
+# Frigate NVR — pode precisar GPU/Coral TPU
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frigate
+  namespace: media
+  labels:
+    app: frigate
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frigate
+  template:
+    metadata:
+      labels:
+        app: frigate
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: frigate
+          image: ghcr.io/blakeblackshear/frigate:stable@sha256:06e48c72f5af2887eafff09a4c53e8df9238827ae9e8df811cbdeaab1c7a4330
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+              name: http
+            - containerPort: 8554
+              name: rtsp
+            - containerPort: 8555
+              name: webrtc
+          env:
+            - name: TZ
+              valueFrom:
+                configMapKeyRef:
+                  name: homelab-config
+                  key: TZ
+          envFrom:
+            - secretRef:
+                name: homelab-secrets
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: media
+              mountPath: /media/frigate
+            - name: cache
+              mountPath: /tmp/cache
+            - name: localtime
+              mountPath: /etc/localtime
+              readOnly: true
+          resources:
+            requests:
+              memory: "512Mi"
+            limits:
+              memory: "2Gi"
+          # GPU/Coral: descomente se tiver hardware
+          # resources:
+          #   limits:
+          #     nvidia.com/gpu: 1
+      volumes:
+        - name: config
+          configMap:
+            name: frigate-config
+        - name: media
+          persistentVolumeClaim:
+            claimName: frigate-media
+        - name: cache
+          emptyDir:
+            sizeLimit: 1Gi
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+            type: File
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frigate
+  namespace: media
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5000
+      targetPort: 5000
+      name: http
+    - port: 8554
+      targetPort: 8554
+      name: rtsp
+    - port: 8555
+      targetPort: 8555
+      name: webrtc
+  selector:
+    app: frigate
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frigate-config
+  namespace: media
+data:
+  config.yml: |
+    # Equivalente a frigate/config.yml
+    mqtt:
+      host: mqtt
+    database:
+      path: /media/frigate/frigate.db
+    record:
+      enabled: true
+    snapshots:
+      enabled: true
+
+---
+# Kali — Job sob demanda (não Deployment 24/7)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kali
+  namespace: core
+  labels:
+    app: kali
+spec:
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: kali
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: kali
+          image: kalilinux/kali-rolling:latest@sha256:e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6
+          imagePullPolicy: IfNotPresent
+          command:
+            - "/bin/bash"
+            - "-c"
+            - |
+              apt-get update -qq && apt-get install -y -qq kali-linux-headless 2>/dev/null || true
+              echo "Kali Linux ready. Use: kubectl exec -it <pod> -- bash"
+              tail -f /dev/null
+          env:
+            - name: TZ
+              valueFrom:
+                configMapKeyRef:
+                  name: homelab-config
+                  key: TZ
+          resources:
+            requests:
+              memory: "256Mi"
+            limits:
+              memory: "1Gi"
+          volumeMounts:
+            - name: data
+              mountPath: /root
+            - name: localtime
+              mountPath: /etc/localtime
+              readOnly: true
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+            type: File

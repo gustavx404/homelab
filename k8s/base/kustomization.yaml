@@ -1,0 +1,12 @@
+# k3s base kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - 00-namespaces.yaml
+  - 01-storage.yaml
+  - 02-networkpolicies.yaml
+
+commonLabels:
+  homelab.gustavx404/managed-by: kustomize
+  homelab.gustavx404/environment: prod

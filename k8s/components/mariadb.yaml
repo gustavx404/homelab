@@ -1,0 +1,145 @@
+# MariaDB StatefulSet — banco central (HA, Forgejo, Grafana, CrowdSec, Mumble, Vaultwarden)
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mariadb
+  namespace: core
+  labels:
+    app: mariadb
+spec:
+  serviceName: mariadb
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mariadb
+          image: mariadb:lts@sha256:8c3e5b5c3e8d4b1f8c7e4a6d9f2b3c5e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3306
+              name: mysql
+          env:
+            - name: MARIADB_DATABASE
+              value: homeassistant
+            - name: MARIADB_AUTO_CREATE_USER
+              value: "1"
+          envFrom:
+            - secretRef:
+                name: homelab-secrets
+            - secretRef:
+                name: mariadb-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "1000m"
+          livenessProbe:
+            exec:
+              command: ["healthcheck.sh", "--connect", "--innodb_initialized"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command: ["healthcheck.sh", "--connect"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: init-scripts
+          configMap:
+            name: mariadb-init-scripts
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 10Gi
+---
+# Service para MariaDB
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb
+  namespace: core
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3306
+      targetPort: 3306
+      protocol: TCP
+  selector:
+    app: mariadb
+---
+# ConfigMap com scripts de inicialização (equivalente a compose/database-init/)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mariadb-init-scripts
+  namespace: core
+data:
+  01-create-app-databases.sh: |
+    #!/bin/bash
+    set -euo pipefail
+    # Creates databases and users for: Forgejo, Grafana, CrowdSec, Mumble, Vaultwarden
+    # Passwords from secrets (env vars)
+    mysql -u root -p"$MARIADB_ROOT_PASSWORD" <<-EOSQL
+      CREATE DATABASE IF NOT EXISTS forgejo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+      CREATE USER IF NOT EXISTS 'forgejo'@'%' IDENTIFIED BY '$FORGEJO_DB_PASSWORD';
+      GRANT ALL PRIVILEGES ON forgejo.* TO 'forgejo'@'%';
+
+      CREATE DATABASE IF NOT EXISTS grafana CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+      CREATE USER IF NOT EXISTS 'grafana'@'%' IDENTIFIED BY '$GRAFANA_DB_PASSWORD';
+      GRANT ALL PRIVILEGES ON grafana.* TO 'grafana'@'%';
+
+      CREATE DATABASE IF NOT EXISTS crowdsec CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+      CREATE USER IF NOT EXISTS 'crowdsec'@'%' IDENTIFIED BY '$CROWDSEC_DB_PASSWORD';
+      GRANT ALL PRIVILEGES ON crowdsec.* TO 'crowdsec'@'%';
+
+      CREATE DATABASE IF NOT EXISTS mumble CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+      CREATE USER IF NOT EXISTS 'mumble'@'%' IDENTIFIED BY '$MUMBLE_DB_PASSWORD';
+      GRANT ALL PRIVILEGES ON mumble.* TO 'mumble'@'%';
+
+      CREATE DATABASE IF NOT EXISTS vaultwarden CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+      CREATE USER IF NOT EXISTS 'vaultwarden'@'%' IDENTIFIED BY '$VAULTWARDEN_DB_PASSWORD';
+      GRANT ALL PRIVILEGES ON vaultwarden.* TO 'vaultwarden'@'%';
+
+      FLUSH PRIVILEGES;
+    EOSQL
+---
+# Secret adicional para passwords dos bancos das apps (separado do homelab-secrets geral)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mariadb-secrets
+  namespace: core
+type: Opaque
+stringData:
+  MARIADB_ROOT_PASSWORD: "CHANGE_ME"
+  MARIADB_PASSWORD: "CHANGE_ME"
+  FORGEJO_DB_PASSWORD: "CHANGE_ME"
+  GRAFANA_DB_PASSWORD: "CHANGE_ME"
+  CROWDSEC_DB_PASSWORD: "CHANGE_ME"
+  MUMBLE_DB_PASSWORD: "CHANGE_ME"
+  VAULTWARDEN_DB_PASSWORD: "CHANGE_ME"

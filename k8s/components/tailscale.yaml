@@ -1,0 +1,88 @@
+# Tailscale Kubernetes Operator — substitui 4 containers + 3 sidecars
+# Instalação: kubectl apply -f https://github.com/tailscale/tailscale-operator/releases/latest/download/manifests.yaml
+# Ou via Helm: helm repo add tailscale https://tailscale.github.io/tailscale-operator && helm install tailscale tailscale/tailscale-operator
+
+---
+# Tailscale Operator (aplicar separadamente via Helm/manifests upstream)
+# Este arquivo documenta os recursos customizados que criaremos DEPOIS do operator estar rodando
+
+---
+# Connector — expõe a LAN (192.168.20.0/24) e rede pod (10.42.0.0/16) via Tailscale
+apiVersion: tailscale.com/v1alpha1
+kind: Connector
+metadata:
+  name: homelab-connector
+  namespace: network
+spec:
+  # Auth key via secret (gerado no admin console Tailscale)
+  authKeySecret:
+    name: tailscale-auth
+    key: authkey
+  # Subnet routes a anunciar
+  subnetRoutes:
+    - 192.168.20.0/24   # LAN física
+    - 10.42.0.0/16      # Pod CIDR k3s
+    - 10.43.0.0/16      # Service CIDR k3s
+  # Hostname no tailnet
+  hostname: homelab-k3s
+  # Tags para ACL
+  tags:
+    - tag:homelab
+  # Route advertisement
+  advertiseRoutes: true
+  # Health check
+  healthCheckPort: 8080
+
+---
+# ProxyGroup — agrupa serviços para Funnel/Serve
+apiVersion: tailscale.com/v1alpha1
+kind: ProxyGroup
+metadata:
+  name: homelab-proxygroup
+  namespace: network
+spec:
+  # Serviços expostos via Tailscale Funnel (HTTPS público)
+  funnel:
+    - hostname: ha.tailnet.ts.net
+      service: homeassistant.core.svc.cluster.local
+      port: 8123
+    - hostname: git.tailnet.ts.net
+      service: forgejo.core.svc.cluster.local
+      port: 3000
+    - hostname: vault.tailnet.ts.net
+      service: vaultwarden.core.svc.cluster.local
+      port: 8080
+    - hostname: omniroute.tailnet.ts.net
+      service: omniroute.ai.svc.cluster.local
+      port: 20128
+
+  # Serviços expostos via Tailscale Serve (apenas tailnet, sem Funnel público)
+  serve:
+    - hostname: grafana.tailnet.ts.net
+      service: grafana.monitoring.svc.cluster.local
+      port: 3000
+    - hostname: prometheus.tailnet.ts.net
+      service: prometheus.monitoring.svc.cluster.local
+      port: 9090
+    - hostname: frigate.tailnet.ts.net
+      service: frigate.media.svc.cluster.local
+      port: 5000
+
+---
+# Secret para auth key do Tailscale (aplicar via SOPS/ksops)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tailscale-auth
+  namespace: network
+type: Opaque
+stringData:
+  authkey: "tskey-auth-CHANGE_ME"
+
+---
+# Annotations para serviços que usam Tailscale Serve/Funnel
+# Adicionar ao metadata.annotations de cada Service:
+# tailscale.com/expose: "true"
+# tailscale.com/hostname: "<nome>.<tailnet>.ts.net"
+# tailscale.com/funnel: "true"  # para Funnel público
+# tailscale.com/proxy-group: "homelab-proxygroup"

@@ -1,0 +1,43 @@
+# Production overlay with SOPS+ksops secrets
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+# SOPS secrets (desencriptados pelo ksops no build)
+secretGenerator:
+  - name: homelab-secrets
+    namespace: core
+    behavior: replace
+    envs:
+      - ../../../compose/.env  # gerado por scripts/decrypt-secrets.sh
+
+# ConfigMap para configurações não-sensíveis
+configMapGenerator:
+  - name: homelab-config
+    namespace: core
+    behavior: replace
+    literals:
+      - TZ=America/Sao_Paulo
+      - CLUSTER_DOMAIN=cluster.local
+
+# Patches para injetar envFrom secrets nos deployments
+patches:
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: mariadb
+        namespace: core
+      spec:
+        template:
+          spec:
+            containers:
+              - name: mariadb
+                envFrom:
+                  - secretRef:
+                      name: homelab-secrets
+    target:
+      kind: Deployment
+      labelSelector: "app=mariadb"

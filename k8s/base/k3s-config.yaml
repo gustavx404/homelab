@@ -1,0 +1,37 @@
+# k3s configuration — single-node homelab
+# Aplicado via: `curl -sfL https://get.k3s.io | sh -s - --config /etc/rancher/k3s/config.yaml`
+# Ou: k3s server --config /etc/rancher/k3s/config.yaml
+
+apiVersion: k3s.cattle.io/v1
+kind: Cluster
+metadata:
+  name: homelab
+spec:
+  # Network
+  cluster-cidr: 10.42.0.0/16
+  service-cidr: 10.43.0.0/16
+  cluster-dns: 10.43.0.10
+  cluster-domain: cluster.local
+
+  # Disable defaults (usamos nossos próprios)
+  disable:
+    - traefik        # instalamos nosso Traefik custom via Helm/manifest
+    - servicelb      # não precisamos de load balancer
+    - local-storage  # usamos local-path-provisioner separado
+
+  # Network policy
+  flannel-backend: vxlan
+
+  # Data dir
+  data-dir: /var/lib/rancher/k3s
+
+  # Kubelet
+  kubelet-arg:
+    - "max-pods=250"
+    - "eviction-hard=memory.available<500Mi,nodefs.available<10%"
+
+  # Runtime
+  containerd: true
+
+  # Audit
+  audit-policy: /etc/rancher/k3s/audit-policy.yaml
