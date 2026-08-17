@@ -21,3 +21,12 @@ repos:
     hooks:
       - id: gitleaks
         args: ['--config', '.gitleaks.toml']
+
+  - repo: local
+    hooks:
+      - id: commit-msg-ptbr
+        name: Validar formato commit pt-BR
+        entry: scripts/validate-commit-msg.sh
+        language: script
+        stages: [commit-msg]
+        types: [text]
