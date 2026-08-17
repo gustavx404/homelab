@@ -26,3 +26,8 @@ homeassistant/esphome/.git/
 data/crowdsec/
 crowdsec/web-ui/node_modules/
 crowdsec/web-ui/dist/
+
+# Certificados/chaves TLS locais - nunca commitar (gerar por operador, ver traefik/certs/README.md)
+traefik/certs/*.key
+traefik/certs/*.crt
+traefik/certs/*.pem
