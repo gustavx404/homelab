@@ -124,10 +124,11 @@ services:
       MUMBLE_CONFIG_dbHost: "mariadb"
       MUMBLE_CONFIG_dbPort: "3306"
       MUMBLE_CONFIG_dbUsername: "mumble"
-      MUMBLE_CONFIG_dbPassword: "${MUMBLE_DB_PASSWORD:?MUMBLE_DB_PASSWORD required}"
       MUMBLE_CONFIG_defaultchannel: "0"
       MUMBLE_CONFIG_rememberchannel: "false"
-      MUMBLE_SUPERUSER_PASSWORD: "${MUMBLE_CONFIG_supw}"
+    secrets:
+      - MUMBLE_CONFIG_dbPassword
+      - MUMBLE_SUPERUSER_PASSWORD
     cap_drop:
       - ALL
     security_opt:
