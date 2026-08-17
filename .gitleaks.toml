@@ -5,12 +5,12 @@ useDefault = true
 
 [allowlist]
 paths = [
-  "(?i)*sops-secrets.yaml",
-  "(?i)*sops-secrets.template.yaml",
-  "(?i)*.example",
-  "(?i)*.md",
-  "(?i)*LICENSE*",
-  "(?i)*.txt",
+  "(?i).*sops-secrets\\.yaml",
+  "(?i).*sops-secrets\\.template\\.yaml",
+  "(?i).*\\.example",
+  "(?i).*\\.md",
+  "(?i).*LICENSE.*",
+  "(?i).*\\.txt",
 ]
 regexes = [
   'ENC\\[AES256_GCM,data:[A-Za-z0-9+/=]+',
