@@ -58,8 +58,20 @@ for i in {1..60}; do
   sleep 2
 done
 
-echo "=== Aplicando manifests base (namespaces, storage, networkpolicies) ==="
-kubectl apply -k /srv/homelab/k8s/base
+echo "=== Verificando secrets placeholder ==="
+if grep -rl "CHANGE_ME" /srv/homelab/k8s/components/*.yaml >/dev/null 2>&1; then
+  echo "ERRO: existem senhas placeholder 'CHANGE_ME' em k8s/components/. Edite os Secrets antes de fazer deploy em produção:"
+  grep -rl "CHANGE_ME" /srv/homelab/k8s/components/*.yaml
+  exit 1
+fi
+
+echo "=== Decriptando secrets (sops -> compose/.env) ==="
+bash /srv/homelab/scripts/decrypt-secrets.sh
+
+echo "=== Aplicando manifests base + secrets (namespaces, storage, networkpolicies, homelab-secrets) ==="
+# --load-restrictor=None é necessário pois compose/.env fica fora da árvore do overlay;
+# kubectl apply -k não expõe essa flag, por isso build + apply em dois passos.
+kubectl kustomize --load-restrictor=LoadRestrictionsNone /srv/homelab/k8s/overlays/prod | kubectl apply -f -
 
 echo "=== Instalando local-path-provisioner ==="
 kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml
@@ -76,7 +88,11 @@ kubectl wait --for=condition=Available deployment/tailscale-operator -n kube-sys
 echo "=== Deploy MariaDB ==="
 kubectl apply -f /srv/homelab/k8s/components/mariadb.yaml
 
-echo "=== Deploy Traefik + CRDs ==="
+echo "=== Instalando CRDs oficiais do Traefik ==="
+kubectl apply -f https://raw.githubusercontent.com/traefik/traefik/v3.3/docs/content/reference/dynamic-configuration/kubernetes-crd-definition-v1.yml
+kubectl wait --for condition=established --timeout=60s crd/ingressroutes.traefik.io crd/middlewares.traefik.io crd/tlsstores.traefik.io
+
+echo "=== Deploy Traefik ==="
 kubectl apply -f /srv/homelab/k8s/components/traefik.yaml
 
 echo "=== Deploy Core Apps ==="

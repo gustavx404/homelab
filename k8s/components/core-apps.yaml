@@ -20,17 +20,19 @@ spec:
       labels:
         app: homeassistant
     spec:
+      # A imagem oficial usa s6-overlay e espera rodar como root (ele mesmo
+      # ajusta permissões de /run, /config etc. no boot); com runAsNonRoot o
+      # s6 falha em "preinit: /run belongs to uid 0 ... lacking privileges to
+      # fix it". Não é hardening possível sem trocar de imagem.
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: homeassistant
-          image: ghcr.io/home-assistant/home-assistant:stable@sha256:1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2
+          image: ghcr.io/home-assistant/home-assistant:stable
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
           ports:
             - containerPort: 8123
               name: http
@@ -126,8 +128,12 @@ spec:
           type: RuntimeDefault
       containers:
         - name: forgejo
-          image: codeberg.org/forgejo/forgejo:16.0.2@sha256:3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3
+          image: codeberg.org/forgejo/forgejo:16.0.2
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 3000
               name: http
@@ -235,18 +241,32 @@ spec:
           type: RuntimeDefault
       containers:
         - name: vaultwarden
-          image: docker.io/vaultwarden/server:1.37.1@sha256:4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4
+          image: docker.io/vaultwarden/server:1.37.1
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 8080
               name: http
           env:
             - name: DOMAIN
               value: https://vault.home
+            - name: ROCKET_PORT
+              value: "8080"
             - name: SIGNUPS_ALLOWED
               value: "false"
+            # SSO via Authentik desligado: o Authentik referenciado em
+            # scripts/authentik-oidc-setup.sh não tem deployment neste cluster
+            # (nem em k8s/, nem em compose/services.yaml). Ligar SSO_ENABLED
+            # sem isso deixa o Vaultwarden em crash loop (falta SSO_AUTHORITY).
+            # Pra habilitar depois: suba o Authentik, defina SSO_AUTHORITY com a
+            # URL dele e mapeie SSO_CLIENT_ID/SSO_CLIENT_SECRET a partir de
+            # VAULTWARDEN_OIDC_CLIENT_ID/VAULTWARDEN_OIDC_CLIENT_SECRET (já existem
+            # em compose/sops-secrets.yaml).
             - name: SSO_ENABLED
-              value: "true"
+              value: "false"
             - name: TZ
               valueFrom:
                 configMapKeyRef:
@@ -254,9 +274,7 @@ spec:
                   key: TZ
           envFrom:
             - secretRef:
-                name: homelab-secrets
-            - secretRef:
-                name: vaultwarden-secrets
+                name: homelab-secrets  # inclui VAULTWARDEN_ADMIN_TOKEN e VAULTWARDEN_DATABASE_URL
           volumeMounts:
             - name: data
               mountPath: /data
@@ -325,8 +343,12 @@ spec:
           type: RuntimeDefault
       containers:
         - name: mumble
-          image: mumblevoip/mumble-server:latest@sha256:5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5
+          image: mumblevoip/mumble-server:latest
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 64738
               name: tcp
@@ -360,9 +382,20 @@ spec:
               value: "3306"
             - name: MUMBLE_CONFIG_dbUsername
               value: mumble
-          envFrom:
-            - secretRef:
-                name: homelab-secrets
+            - name: MUMBLE_CONFIG_dbPassword
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb-secrets
+                  key: MUMBLE_DB_PASSWORD
+            - name: MUMBLE_SUPERUSER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: MUMBLE_CONFIG_supw
+          # sem envFrom homelab-secrets aqui: ele traria de volta a chave crua
+          # MUMBLE_CONFIG_supw, que a imagem tenta interpretar como config
+          # genérico e quebra com "Unable to find config corresponding to
+          # variable supw". Mumble não usa mais nenhuma outra chave do secret.
           volumeMounts:
             - name: data
               mountPath: /data
@@ -429,8 +462,12 @@ spec:
           type: RuntimeDefault
       containers:
         - name: omniroute
-          image: diegosouzapw/omniroute:latest@sha256:6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6
+          image: diegosouzapw/omniroute:latest
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 20128
               name: dashboard
@@ -464,9 +501,7 @@ spec:
               value: "--max-old-space-size=2300"
           envFrom:
             - secretRef:
-                name: homelab-secrets
-            - secretRef:
-                name: omniroute-secrets
+                name: homelab-secrets  # inclui OMNIROUTE_INITIAL_PASSWORD
           volumeMounts:
             - name: data
               mountPath: /app/data
@@ -550,8 +585,12 @@ spec:
           type: RuntimeDefault
       containers:
         - name: redis
-          image: docker.io/library/redis:8.6.5-alpine@sha256:7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7
+          image: docker.io/library/redis:8.6.5-alpine
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 6379
               name: redis

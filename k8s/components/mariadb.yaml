@@ -26,8 +26,12 @@ spec:
           type: RuntimeDefault
       containers:
         - name: mariadb
-          image: mariadb:lts@sha256:8c3e5b5c3e8d4b1f8c7e4a6d9f2b3c5e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2
+          image: mariadb:lts
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 3306
               name: mysql
@@ -104,7 +108,7 @@ data:
     set -euo pipefail
     # Creates databases and users for: Forgejo, Grafana, CrowdSec, Mumble, Vaultwarden
     # Passwords from secrets (env vars)
-    mysql -u root -p"$MARIADB_ROOT_PASSWORD" <<-EOSQL
+    mariadb -u root -p"$MARIADB_ROOT_PASSWORD" <<-EOSQL
       CREATE DATABASE IF NOT EXISTS forgejo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
       CREATE USER IF NOT EXISTS 'forgejo'@'%' IDENTIFIED BY '$FORGEJO_DB_PASSWORD';
       GRANT ALL PRIVILEGES ON forgejo.* TO 'forgejo'@'%';

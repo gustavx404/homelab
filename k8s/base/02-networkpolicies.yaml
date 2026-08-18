@@ -37,6 +37,17 @@ spec:
           port: 8080   # Vaultwarden
         - protocol: TCP
           port: 64738  # Mumble
+    - from:
+        - podSelector: {}  # outros pods do core -> MariaDB
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: security  # CrowdSec -> MariaDB
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring  # Grafana -> MariaDB
+      ports:
+        - protocol: TCP
+          port: 3306   # MariaDB
   egress:
     - to:
         - podSelector:
@@ -201,7 +212,7 @@ spec:
               kubernetes.io/metadata.name: network  # Traefik
         - namespaceSelector:
             matchLabels:
-              kubernetes.io.metadata.name: monitoring  # Prometheus
+              kubernetes.io/metadata.name: monitoring  # Prometheus
       ports:
         - protocol: TCP
           port: 5000   # Frigate

@@ -30,7 +30,7 @@ echo "KUBECONFIG=$KUBECONFIG"
 echo "Aguardando node Ready..."
 kubectl wait --for=condition=Ready node --all --timeout=120s
 
-# 4. Aplicar base (namespaces, storage, networkpolicies)
+# 4. Aplicar base (namespaces, storage, networkpolicies) — secrets ficam para o passo "deploy-secrets.sh"
 echo "Aplicando manifests base..."
 kubectl apply -k /srv/homelab/k8s/base
 
